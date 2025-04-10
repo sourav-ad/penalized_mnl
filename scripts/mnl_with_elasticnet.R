@@ -273,5 +273,3 @@ if(length(zero_coeffs) == 0){
 } else {
   cat(paste(zero_coeffs, collapse = ", "), "\n")
 }
-
-#Use source("scripts/mnl_with_elasticnet.R", echo = FALSE)
