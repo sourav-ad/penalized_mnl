@@ -1,0 +1,26 @@
+{
+    "id": "E48FA0F9",
+    "path": "~/Doggerbank_sourav/Doggerbank_R/mnl_scratch/scripts/mnl_with_elasticnet.R",
+    "project_path": "scripts/mnl_with_elasticnet.R",
+    "type": "r_source",
+    "hash": "3405433153",
+    "contents": "",
+    "dirty": false,
+    "created": 1744277431208.0,
+    "source_on_save": false,
+    "relative_order": 1,
+    "properties": {
+        "source_window_id": "",
+        "Source": "Source",
+        "cursorPosition": "25,0",
+        "scrollLine": "14"
+    },
+    "folds": "",
+    "lastKnownWriteTime": 1744277455,
+    "encoding": "UTF-8",
+    "collab_server": "",
+    "source_window": "",
+    "last_content_update": 1744277455918,
+    "read_only": false,
+    "read_only_alternatives": []
+}
