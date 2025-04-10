@@ -188,7 +188,7 @@ sorted_coefficients <- coefficients_df %>%
 
 ########CHANGE AS NEEDED###############
 #top n coefficients from Elastic Net
-n <- 20
+n <- 15
 ########CHANGE AS NEEDED###############
 selected_features <- sorted_coefficients$feature[1:n]
 #print(selected_features)
@@ -209,43 +209,45 @@ nset <- nrow(df_demo)
 #initial values of betas
 start.values <- rep(0, n)
 
+lambda <- 1
+
 # # estimate model (without inverting Hessian)
 res = maxBFGS(
-              #MNL,
-              function(coeff) MNL(coeff, alt1, alt2, alt3, final_eval = FALSE),
-              grad=NULL,
-              hess=NULL,
-              start=start.values,
-              fixed=NULL,
-              print.level=1,
-              iterlim=200,
-              constraints=NULL,
-              tol=1e-25, reltol=1e-25,
-              finalHessian=FALSE,
-              parscale=rep(1, length=length(start))
-              )
+  #MNL,
+  function(coeff) MNL(coeff, alt1, alt2, alt3, lambda, final_eval = FALSE),
+  grad=NULL,
+  hess=NULL,
+  start=start.values,
+  fixed=NULL,
+  print.level=0,
+  iterlim=200,
+  constraints=NULL,
+  tol=1e-25, reltol=1e-25,
+  finalHessian=FALSE,
+  parscale=rep(1, length=length(start))
+)
 
-invisible(MNL(res$estimate, alt1, alt2, alt3, final_eval = TRUE))
+invisible(MNL(res$estimate, alt1, alt2, alt3, lambda, final_eval = TRUE))
 
 # estimate model (with inverting Hessian)
 #new start values are the values obtained above as starting values
 start.values = coef(res)
 
 res = maxLik(
-            #MNL,
-            function(coeff) MNL(coeff, alt1, alt2, alt3),  
-            grad=NULL, 
-            hess=NULL, 
-            start=start.values, 
-            fixed=NULL, 
-            print.level=1, 
-            method="BHHH", 
-            iterlim=2,
-            #iterlim=0, 
-            constraints=NULL, 
-            tol=1e-04, reltol=1e-04,
-            finalHessian=TRUE
-            )
+  #MNL,
+  function(coeff) MNL(coeff, alt1, alt2, alt3, lambda, final_eval = TRUE),  
+  grad=NULL, 
+  hess=NULL, 
+  start=start.values, 
+  fixed=NULL, 
+  print.level=0, 
+  method="BHHH", 
+  iterlim=2,
+  #iterlim=0, 
+  constraints=NULL, 
+  tol=1e-04, reltol=1e-04,
+  finalHessian=TRUE
+)
 
 #Give names to the betas, top n candidates
 names(res$estimate) = selected_features
@@ -259,10 +261,10 @@ summary(MNL.res)
 #Bayesian Information Criteria
 N <- nrow(df_long)
 BIC_value <- -2 * logLik(res) + length(coef(res)) * log(N)
-cat("BIC value for elastic-net + MNL: ", BIC_value, "\n")
+cat("\n BIC value for elastic-net + MNL: ", BIC_value, "\n")
 
 final_coeff <- res$estimate
-threshold <- 1e-4
+threshold <- 1e-3
 zero_indices <- which(abs(final_coeff) < threshold)
 zero_coeffs <- names(final_coeff)[zero_indices]
 

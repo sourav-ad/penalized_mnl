@@ -33,10 +33,9 @@ nrep <- 6
 #   return(LL)
 # }
 
-lambda <- 0.1
 intercept_index <- 1
 
-MNL <- function(coeff, alt1, alt2, alt3, final_eval = FALSE) {
+MNL <- function(coeff, alt1, alt2, alt3, lambda, final_eval = FALSE) {
   
   util1 = (alt1 %*% coeff[1:n])
   util2 = (alt2 %*% coeff[1:n])
@@ -65,10 +64,10 @@ MNL <- function(coeff, alt1, alt2, alt3, final_eval = FALSE) {
   LL_lasso <- LL - penalty
   
   #Print both LL
-  if (final_eval) {
-    cat("Log-likelihood (unpenalized):", sum(LL), "\n")
-    cat("Log-likelihood (Lasso):", sum(LL_lasso), "\n")
-  }
+  # if (final_eval) {
+  #   cat("Log-likelihood (unpenalized):", sum(LL), "\n")
+  #   cat("Log-likelihood (Lasso):", sum(LL_lasso), "\n")
+  # }
   
   return(LL_lasso)
 }
