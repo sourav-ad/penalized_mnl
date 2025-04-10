@@ -188,7 +188,7 @@ sorted_coefficients <- coefficients_df %>%
 
 ########CHANGE AS NEEDED###############
 #top n coefficients from Elastic Net
-n <- 35
+n <- 20
 ########CHANGE AS NEEDED###############
 selected_features <- sorted_coefficients$feature[1:n]
 #print(selected_features)
@@ -212,7 +212,7 @@ start.values <- rep(0, n)
 # # estimate model (without inverting Hessian)
 res = maxBFGS(
               #MNL,
-              function(coeff) MNL(coeff, alt1, alt2, alt3),
+              function(coeff) MNL(coeff, alt1, alt2, alt3, final_eval = FALSE),
               grad=NULL,
               hess=NULL,
               start=start.values,
@@ -224,6 +224,8 @@ res = maxBFGS(
               finalHessian=FALSE,
               parscale=rep(1, length=length(start))
               )
+
+invisible(MNL(res$estimate, alt1, alt2, alt3, final_eval = TRUE))
 
 # estimate model (with inverting Hessian)
 #new start values are the values obtained above as starting values
@@ -259,4 +261,17 @@ N <- nrow(df_long)
 BIC_value <- -2 * logLik(res) + length(coef(res)) * log(N)
 cat("BIC value for elastic-net + MNL: ", BIC_value, "\n")
 
+final_coeff <- res$estimate
+threshold <- 1e-4
+zero_indices <- which(abs(final_coeff) < threshold)
+zero_coeffs <- names(final_coeff)[zero_indices]
 
+cat("===== Coefficients shrunk after Lasso regularization =====\n")
+
+if(length(zero_coeffs) == 0){
+  cat("None of the coeffcients were shrunk \n")
+} else {
+  cat(paste(zero_coeffs, collapse = ", "), "\n")
+}
+
+#Use source("scripts/mnl_with_elasticnet.R", echo = FALSE)

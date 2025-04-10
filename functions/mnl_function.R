@@ -33,8 +33,10 @@ nrep <- 6
 #   return(LL)
 # }
 
+lambda <- 0.1
+intercept_index <- 1
 
-MNL <- function(coeff, alt1, alt2, alt3) {
+MNL <- function(coeff, alt1, alt2, alt3, final_eval = FALSE) {
   
   util1 = (alt1 %*% coeff[1:n])
   util2 = (alt2 %*% coeff[1:n])
@@ -42,7 +44,7 @@ MNL <- function(coeff, alt1, alt2, alt3) {
   
   innerArg = ((exp(util1) * df_demo$choice1) + (exp(util2) * df_demo$choice2) + (exp(util3) * df_demo$choice3)) / ( exp(util1) + exp(util2) + exp(util3))
   #returns a vector of probabilities
-  choice_probs = colprods(matrix(innerArg,nrow=nrep))
+  choice_probs = colprods(matrix(innerArg, nrow=nrep))
   #choice_probs = ()
   
   # log-likelihood  
@@ -53,7 +55,22 @@ MNL <- function(coeff, alt1, alt2, alt3) {
     stop("Error: LL is returning a single scalar instead of a vector.")
   }
   
-  return(LL)
+  #L1 norm
+  penalty <- if(!is.null(intercept_index)){
+    lambda * sum(abs(coeff[-intercept_index]))
+  } else {
+    lambda * sum(abs(coeff))
+  }
+  
+  LL_lasso <- LL - penalty
+  
+  #Print both LL
+  if (final_eval) {
+    cat("Log-likelihood (unpenalized):", sum(LL), "\n")
+    cat("Log-likelihood (Lasso):", sum(LL_lasso), "\n")
+  }
+  
+  return(LL_lasso)
 }
 
 
