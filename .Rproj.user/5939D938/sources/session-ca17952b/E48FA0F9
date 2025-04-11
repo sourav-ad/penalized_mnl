@@ -3,7 +3,7 @@
     "path": "~/Doggerbank_sourav/Doggerbank_R/mnl_scratch/scripts/mnl_with_elasticnet.R",
     "project_path": "scripts/mnl_with_elasticnet.R",
     "type": "r_source",
-    "hash": "56682952",
+    "hash": "1183191492",
     "contents": "",
     "dirty": false,
     "created": 1744277431208.0,
@@ -12,15 +12,15 @@
     "properties": {
         "source_window_id": "",
         "Source": "Source",
-        "cursorPosition": "226,39",
-        "scrollLine": "207"
+        "cursorPosition": "190,7",
+        "scrollLine": "183"
     },
     "folds": "",
-    "lastKnownWriteTime": 1744294796,
+    "lastKnownWriteTime": 1744379413,
     "encoding": "UTF-8",
     "collab_server": "",
     "source_window": "",
-    "last_content_update": 1744294796798,
+    "last_content_update": 1744379413709,
     "read_only": false,
     "read_only_alternatives": []
 }

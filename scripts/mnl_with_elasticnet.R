@@ -206,69 +206,98 @@ alt3 <- alt_matrices$alt3
 #A required parameter in the code 
 nset <- nrow(df_demo)
 
-#initial values of betas
-start.values <- rep(0, n)
+lambda_grid <- c(seq(0.1, 0.5, 0.1))
 
-lambda <- 1
+best_lambda <- NULL
+best_BIC <- Inf
+best_res <- NULL
 
-# # estimate model (without inverting Hessian)
-res = maxBFGS(
-  #MNL,
-  function(coeff) MNL(coeff, alt1, alt2, alt3, lambda, final_eval = FALSE),
-  grad=NULL,
-  hess=NULL,
-  start=start.values,
-  fixed=NULL,
-  print.level=0,
-  iterlim=200,
-  constraints=NULL,
-  tol=1e-25, reltol=1e-25,
-  finalHessian=FALSE,
-  parscale=rep(1, length=length(start))
-)
+# Store all BICs
+lambda_results <- data.frame(lambda = lambda_grid, BIC = NA)
 
-invisible(MNL(res$estimate, alt1, alt2, alt3, lambda, final_eval = TRUE))
+for (i in seq_along(lambda_grid)) {
+    
+    lambda <- lambda_grid[i]
+    #initial values of betas
+    start.values <- rep(0, n)
+    
+    #estimate model (without inverting Hessian)
+    res = maxBFGS(
+      #MNL,
+      function(coeff) MNL(coeff, alt1, alt2, alt3, lambda, final_eval = FALSE),
+      grad=NULL,
+      hess=NULL,
+      start=start.values,
+      fixed=NULL,
+      print.level=0,
+      iterlim=200,
+      constraints=NULL,
+      tol=1e-25, reltol=1e-25,
+      finalHessian=FALSE,
+      parscale=rep(1, length=length(start))
+    )
+    
+    invisible(MNL(res$estimate, alt1, alt2, alt3, lambda, final_eval = TRUE))
+    
+    # estimate model (with inverting Hessian)
+    #new start values are the values obtained above as starting values
+    start.values = coef(res)
+    
+    res = maxLik(
+      #MNL,
+      function(coeff) MNL(coeff, alt1, alt2, alt3, lambda, final_eval = TRUE),  
+      grad=NULL, 
+      hess=NULL, 
+      start=start.values, 
+      fixed=NULL, 
+      print.level=0, 
+      method="BHHH", 
+      iterlim=2,
+      #iterlim=0, 
+      constraints=NULL, 
+      tol=1e-04, reltol=1e-04,
+      finalHessian=TRUE
+    )
+    
+    # Compute penalized BIC (based on penalized LL)
+    N <- nrow(df_long)
+    LL <- logLik(res)
+    BIC_lasso <- -2 * LL + sum(abs(coef(res)) > 1e-3) * log(N)
+    lambda_results$BIC[i] <- BIC_lasso
+    
+    # Check for best
+    if (BIC_lasso < best_BIC) {
+      best_lambda <- lambda
+      best_BIC <- BIC_lasso
+      best_res <- res
+    }
 
-# estimate model (with inverting Hessian)
-#new start values are the values obtained above as starting values
-start.values = coef(res)
-
-res = maxLik(
-  #MNL,
-  function(coeff) MNL(coeff, alt1, alt2, alt3, lambda, final_eval = TRUE),  
-  grad=NULL, 
-  hess=NULL, 
-  start=start.values, 
-  fixed=NULL, 
-  print.level=0, 
-  method="BHHH", 
-  iterlim=2,
-  #iterlim=0, 
-  constraints=NULL, 
-  tol=1e-04, reltol=1e-04,
-  finalHessian=TRUE
-)
+}
 
 #Give names to the betas, top n candidates
-names(res$estimate) = selected_features
+# names(res$estimate) = selected_features
+# 
+# cat(paste(",",res$estimate))
+# 
+# MNL.res = res
+# 
+# print(summary(MNL.res))
 
-cat(paste(",",res$estimate))
+cat("\n===== Lambda tuning summary =====\n")
+print(lambda_results)
+cat("\nBest lambda based on BIC:", best_lambda, "\n")
+cat("Best BIC:", best_BIC, "\n")
 
-MNL.res = res
+names(best_res$estimate) <- selected_features
+MNL.res <- best_res
+print(summary(MNL.res))
 
-summary(MNL.res)
-
-#Bayesian Information Criteria
-N <- nrow(df_long)
-BIC_value <- -2 * logLik(res) + length(coef(res)) * log(N)
-cat("\n BIC value for elastic-net + MNL: ", BIC_value, "\n")
-
-final_coeff <- res$estimate
+final_coeff <- best_res$estimate
 threshold <- 1e-3
 zero_indices <- which(abs(final_coeff) < threshold)
 zero_coeffs <- names(final_coeff)[zero_indices]
 
-cat("===== Coefficients shrunk after Lasso regularization =====\n")
+cat("==Coefficients shrunk after Lasso regularization==\n")
 
 if(length(zero_coeffs) == 0){
   cat("None of the coeffcients were shrunk \n")
