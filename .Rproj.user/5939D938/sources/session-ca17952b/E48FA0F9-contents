@@ -206,7 +206,8 @@ alt3 <- alt_matrices$alt3
 #A required parameter in the code 
 nset <- nrow(df_demo)
 
-lambda_grid <- c(seq(0.1, 0.5, 0.1))
+lambda_grid <- c(seq(0.05, 0.15, 0.01))
+#best lambda 0.08
 
 best_lambda <- NULL
 best_BIC <- Inf
@@ -261,8 +262,12 @@ for (i in seq_along(lambda_grid)) {
     
     # Compute penalized BIC (based on penalized LL)
     N <- nrow(df_long)
-    LL <- logLik(res)
-    BIC_lasso <- -2 * LL + sum(abs(coef(res)) > 1e-3) * log(N)
+    LL_unpenalized <- MNL(res$estimate, alt1, alt2, alt3, lambda = 0, final_eval = FALSE) 
+    LL_unpenalized<- sum(LL_unpenalized)
+    threshold <- 1e-3
+    active_coeffs <- coef(res)[abs(coef(res)) >= threshold]
+    k <- length(active_coeffs)
+    BIC_lasso <- -2 * LL_unpenalized + k * log(N)
     lambda_results$BIC[i] <- BIC_lasso
     
     # Check for best

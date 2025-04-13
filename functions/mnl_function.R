@@ -63,7 +63,7 @@ MNL <- function(coeff, alt1, alt2, alt3, lambda, final_eval = FALSE) {
   
   LL_lasso <- LL - penalty
   #return the penalized log likelihood
-  return(LL)
+  return(LL_lasso)
 }
 
 
