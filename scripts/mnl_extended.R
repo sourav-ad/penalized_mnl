@@ -35,12 +35,12 @@ install_if_missing(required_packages)
 
 #Source files
 #Set appropriate working directory
-source("utility_functions.R")
-source("mnl_function.R")
-source("pre_process.R")
+source("functions/utility_functions.R")
+source("functions/mnl_function.R")
+source("functions/pre_process.R")
 
 #Data (change path as needed)
-data <- read.csv("doggerbank_full_973_wide.csv")
+data <- read.csv("data/doggerbank_full_973_wide.csv")
 #person id
 data$person <- rep(1:(dim(data)[1]/6), each=6)
 
@@ -48,7 +48,7 @@ data$person <- rep(1:(dim(data)[1]/6), each=6)
 #We modify the data to have an idea about each respondent's choice among the 3 options provided 
 data <- data[, !names(data) %in% c('choice1', 'choice2', 'choice3', 'choice4', 'choice5', 'choice6')]
 
-n_alt <- num_variables("Enter the number of choices given to respondent:")
+n_alt <- 3
 
 #Automated for any number of choices. Response variable must be named y1, y2,...
 
@@ -132,26 +132,16 @@ df_long <- df_long %>%
 #User interaction to determine interactions
 
 
-n_vary <- num_variables("How many variables vary with response?")
-vars_vary <- name_variables("Enter the names of variables that vary with response, separated by comma:\n")
-
-n_constant <- num_variables("How many variables to interact that remain CONSTANT for respondents?")
-vars_constant <- name_variables("Enter the names of those variables that do not vary, separated by comma:\n")
-
-df_interactions <- df_long[, vars_vary]
-df_interactions_with <- df_long[, vars_constant]
-
-
 #Without user interaction
 
-# #Columns that vary with response
-# df_interactions <- df_long[, c('cost', 'spec10', 'spec25', 'prot25', 'prot50',
-#                                'invasive')]
-# 
-# #Columns that do not vary with response
-# df_interactions_with <- df_long[, c('male', 'edu', 'job', 'age', 'q227', 'q229', 'q1', 'q2', 
-#                                     'q6', 'q7', 'q10', 'job1', 'job2', 'job3', 'job4', 
-#                                     'job5', 'job6', 'job7', 'job8')]
+#Columns that vary with response
+df_interactions <- df_long[, c('cost', 'spec10', 'spec25', 'prot25', 'prot50',
+                               'invasive')]
+
+#Columns that do not vary with response
+df_interactions_with <- df_long[, c('male', 'edu', 'job', 'age', 'q227', 'q229', 'q1', 'q2',
+                                    'q6', 'q7', 'q10', 'job1', 'job2', 'job3', 'job4',
+                                    'job5', 'job6', 'job7', 'job8')]
 
 #Create an empty dataframe with same rows as df_interactions
 interaction_df <- data.frame(matrix(nrow = nrow(df_interactions), ncol = 0))
@@ -224,8 +214,7 @@ sorted_coefficients <- coefficients_df %>%
 
 ########CHANGE AS NEEDED###############
 #top n coefficients from Elastic Net
-n <- num_variables(sprintf("How many marginal and interacting covariates to display? (Ascending order, max %d)", 
-                   length(sorted_coefficients$feature)))
+n <- 20
 ########CHANGE AS NEEDED###############
 selected_features <- sorted_coefficients$feature[1:n]
 #print(selected_features)
@@ -248,6 +237,14 @@ alt_list <- list(alt1, alt2, alt3)
 
 #A required parameter in the code 
 nset <- nrow(df_demo)
+L1_lambda_grid <- c(seq(0.005, 0.009, 0.001))
+
+best_L1_lambda <- NULL
+best_BIC <- Inf
+best_res <- NULL
+
+# Store all BICs
+lambda_results <- data.frame(lambda = L1_lambda_grid, BIC = NA)
 
 #initial values of betas
 start.values <- rep(0, n)
@@ -256,61 +253,91 @@ start.values <- rep(0, n)
 
 choice_list <- lapply(1:n_alt, function(i) df_demo[[paste0("choice", i)]])
 
-# estimate model (without inverting Hessian)
-res = maxBFGS(
-      #MNL,
-      function(coeff) MNL(coeff, alt_list, choice_list),
-      grad=NULL,
-      hess=NULL,
-      start=start.values,
-      fixed=NULL,
-      print.level=1,
-      iterlim=200,
-      constraints=NULL,
-      tol=1e-25, reltol=1e-25,
-      finalHessian=FALSE,
-      parscale=rep(1, length=length(start))
-    )
+for (i in seq_along(L1_lambda_grid)) {
+  
+  lambda <- L1_lambda_grid[i]
+  #initial values of betas
+  start.values <- rep(0, n)
+  # estimate model (without inverting Hessian)
+  res = maxBFGS(
+        #MNL,
+        function(coeff) MNL(coeff, alt_list, choice_list, lambda, final_eval = FALSE),
+        grad=NULL,
+        hess=NULL,
+        start=start.values,
+        fixed=NULL,
+        print.level=0,
+        iterlim=200,
+        constraints=NULL,
+        tol=1e-25, reltol=1e-25,
+        finalHessian=FALSE,
+        parscale=rep(1, length=length(start))
+      )
+  
+  invisible(MNL(res$estimate, alt_list, choice_list, lambda, final_eval = TRUE))
+  
+  # estimate model (with inverting Hessian)
+  #new start values are the values obtained above as starting values
+  start.values = coef(res)
+  
+  res = maxLik(
+        #MNL,
+        function(coeff) MNL(coeff, alt_list, choice_list, lambda, final_eval = FALSE),  
+        grad=NULL, 
+        hess=NULL, 
+        start=start.values, 
+        fixed=NULL, 
+        print.level=1, 
+        method="BHHH", 
+        iterlim=2,
+        #iterlim=0, 
+        constraints=NULL, 
+        tol=1e-04, reltol=1e-04,
+        finalHessian=TRUE
+      )
+  
+  # Compute penalized BIC (based on penalized LL)
+  N <- nrow(df_long)
+  LL_unpenalized <- MNL(res$estimate, alt_list, choice_list, lambda = 0, final_eval = FALSE) 
+  LL_unpenalized<- sum(LL_unpenalized)
+  threshold <- 1e-3
+  active_coeffs <- coef(res)[abs(coef(res)) >= threshold]
+  k <- length(active_coeffs)
+  print(k)
+  BIC_lasso <- -2 * LL_unpenalized + k * log(N)
+  lambda_results$BIC[i] <- BIC_lasso
+  
+  # Check for best
+  if (BIC_lasso < best_BIC) {
+    best_L1_lambda <- lambda
+    best_BIC <- BIC_lasso
+    best_res <- res
+  }
+  
+}
 
-# estimate model (with inverting Hessian)
-#new start values are the values obtained above as starting values
-start.values = coef(res)
+plot(lambda_results$lambda, lambda_results$BIC, type = "b", 
+     xlab = "Lambda (L1 Penalty)", ylab = "BIC", 
+     main = "Model Selection using BIC")
 
-res = maxLik(
-      #MNL,
-      function(coeff) MNL(coeff, alt_list, choice_list),  
-      grad=NULL, 
-      hess=NULL, 
-      start=start.values, 
-      fixed=NULL, 
-      print.level=1, 
-      method="BHHH", 
-      iterlim=2,
-      #iterlim=0, 
-      constraints=NULL, 
-      tol=1e-04, reltol=1e-04,
-      finalHessian=TRUE
-    )
+cat("\n===== Lambda tuning summary =====\n")
+print(lambda_results)
+cat("\nBest lambda based on BIC:", best_L1_lambda, "\n")
+cat("Best BIC:", best_BIC, "\n")
 
-#Give names to the betas, top n candidates
-names(res$estimate) = selected_features
+names(best_res$estimate) <- selected_features
+MNL.res <- best_res
+print(summary(MNL.res))
 
-cat(paste(",",res$estimate))
+final_coeff <- best_res$estimate
+threshold <- 1e-3
+zero_indices <- which(abs(final_coeff) < threshold)
+zero_coeffs <- names(final_coeff)[zero_indices]
 
-MNL.res = res
+cat("==Coefficients shrunk after Lasso regularization==\n")
 
-summary(MNL.res)
-
-#Extracting the significant interactions
-coeff_table <- summary(MNL.res)$estimate
-significant_interactions <- coeff_table[coeff_table[, "Pr(> t)"] < 0.001, ]
-#List of significant (***) covariates AND interactions
-print(significant_interactions)
-
-#Bayesian Information Criteria
-N <- nrow(df_long)
-BIC_value <- -2 * logLik(res) + length(coef(res)) * log(N)
-cat("BIC value for elastic-net + MNL: ", BIC_value, "\n")
-
-
-
+if(length(zero_coeffs) == 0){
+  cat("None of the coeffcients were shrunk \n")
+} else {
+  cat(paste(zero_coeffs, collapse = ", "), "\n")
+}

@@ -19,14 +19,14 @@ install_if_missing(required_packages)
 
 #Source files
 #Set appropriate working directory
-source("utility_functions.R")
-source("mnl_function.R")
-source("pre_process.R")
+source("functions/utility_functions.R")
+source("functions/mnl_function.R")
+source("functions/pre_process.R")
 
 
 choice_model <- function(n_alt, vars_vary, vars_constant, n){
   #Data (change path as needed)
-  data <- read.csv("doggerbank_full_973_wide.csv")
+  data <- read.csv("data/doggerbank_full_973_wide.csv")
   #person id
   data$person <- rep(1:(dim(data)[1]/6), each=6)
   

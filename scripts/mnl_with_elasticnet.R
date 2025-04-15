@@ -30,9 +30,13 @@ source("functions/mnl_function.R")
 source("functions/pre_process.R")
 
 #Data (change path as needed)
-data <- read.csv("data/Doggerbank_data_973_wide.csv")
+data <- read.csv("data/doggerbank_full_973_wide.csv")
 #person id
 data$person <- rep(1:(dim(data)[1]/6), each=6)
+
+#Remove columns 'choice1' to 'choice 6' and create new columns instead
+#We modify the data to have an idea about each respondent's choice among the 3 options provided 
+data <- data[, !names(data) %in% c('choice1', 'choice2', 'choice3', 'choice4', 'choice5', 'choice6')]
 
 # choice variable
 data$choice <- 0
@@ -51,29 +55,29 @@ data$choice3 <- ifelse(data$choice == 3, 1, 0)
 #remove columns with more than 50% empty rows
 data <- data[, colMeans(is.na(data)) <= 0.5]
 
-#fill country columns using the mode value
-country_cols <- c('england', 'scotland', 'wales', 'nireland')
-
-fill_na_with_mode <- function(column) {
-  #mode_val <- names(which.max(table(column, useNA = "no")))  # Calculate mode (optional)
-  column[is.na(column)] <- 2                        # Replace NA with its own category
-  return(column)
-}
-
-data[country_cols] <- lapply(data[country_cols], fill_na_with_mode)
+# #fill country columns using the mode value
+# country_cols <- c('england', 'scotland', 'wales', 'nireland')
+# 
+# fill_na_with_mode <- function(column) {
+#   #mode_val <- names(which.max(table(column, useNA = "no")))  # Calculate mode (optional)
+#   column[is.na(column)] <- 2                        # Replace NA with its own category
+#   return(column)
+# }
+# 
+# data[country_cols] <- lapply(data[country_cols], fill_na_with_mode)
 
 #rename columns q22_7, q22_9 for easier recognition of interaction
-
 data <- data %>%
   rename('q227' = 'q22_7', 'q229' = 'q22_9')
 
 #Take a subset of the data 
 df_demo <- data[, c('id', 'line',
-                  'invasive1', 'cost1', 'spec101', 'spec251', 'prot251', 'prot501',
-                  'invasive2','cost2', 'spec102', 'spec252', 'prot252', 'prot502',
-                  'invasive3', 'cost3', 'spec103', 'spec253', 'prot253', 'prot503', 'q227', 'q229',
-                  'edu', 'male', 'job', 'age', 'choice','protest1', 'protest2', 'protest3', 'y1', 'y2', 'y3',
-                  'choice1', 'choice2', 'choice3')]
+                    'invasive1', 'cost1', 'spec101', 'spec251', 'prot251', 'prot501',
+                    'invasive2','cost2', 'spec102', 'spec252', 'prot252', 'prot502',
+                    'invasive3', 'cost3', 'spec103', 'spec253', 'prot253', 'prot503', 'q227', 'q229',
+                    'edu', 'male', 'job', 'age', 'choice', 'y1', 'y2', 'y3',
+                    'choice1', 'choice2', 'choice3', 'job1', 'job2', 
+                    'job3', 'job4', 'job5', 'job6', 'job7', 'job8', 'q1', 'q2', 'q6', 'q7', 'q10')]
 
 #If adding columns that are constant across responses, change 'constant_vars' in utility_functions.R
 
@@ -107,7 +111,9 @@ df_interactions <- df_long[, c('cost', 'spec10', 'spec25', 'prot25', 'prot50',
                                'invasive')]
 
 #Columns that do not vary with response
-df_interactions_with <- df_long[, c('male', 'edu', 'job', 'age', 'q227', 'q229')]
+df_interactions_with <- df_long[, c('male', 'edu', 'job', 'age', 'q227', 'q229', 'q1', 'q2',
+                                    'q6', 'q7', 'q10', 'job1', 'job2', 'job3', 'job4',
+                                    'job5', 'job6', 'job7', 'job8')]
 
 #Create an empty dataframe with same rows as df_interactions
 interaction_df <- data.frame(matrix(nrow = nrow(df_interactions), ncol = 0))
@@ -157,7 +163,7 @@ set.seed(123)
 # cat("Best Lambda:", best_lambda, "\n")
 
 #use the best lambda as obtained to fit the final model
-best_lambda <- 0.0005874177
+best_lambda <- 0.001634525
 
 final_model <- glmnet(
   x = X,
@@ -188,7 +194,7 @@ sorted_coefficients <- coefficients_df %>%
 
 ########CHANGE AS NEEDED###############
 #top n coefficients from Elastic Net
-n <- 15
+n <- 25
 ########CHANGE AS NEEDED###############
 selected_features <- sorted_coefficients$feature[1:n]
 #print(selected_features)
@@ -207,7 +213,6 @@ alt3 <- alt_matrices$alt3
 nset <- nrow(df_demo)
 
 lambda_grid <- c(seq(0.05, 0.15, 0.01))
-#best lambda 0.08
 
 best_lambda <- NULL
 best_BIC <- Inf
@@ -279,6 +284,10 @@ for (i in seq_along(lambda_grid)) {
 
 }
 
+plot(lambda_results$lambda, lambda_results$BIC, type = "b", 
+     xlab = "Lambda (L1 Penalty)", ylab = "BIC", 
+     main = "Model Selection using BIC")
+
 #Give names to the betas, top n candidates
 # names(res$estimate) = selected_features
 # 
@@ -309,3 +318,70 @@ if(length(zero_coeffs) == 0){
 } else {
   cat(paste(zero_coeffs, collapse = ", "), "\n")
 }
+
+
+
+
+###Cross validated lasso parameter
+
+# Parameters
+n_folds <- 5
+lambda_grid <- seq(0.05, 0.15, 0.01)
+best_lambda <- NULL
+best_LL <- -Inf
+lambda_results <- data.frame(lambda = lambda_grid, mean_LL = NA)
+
+# Create folds (respondent-wise split)
+set.seed(123)
+id_list <- unique(df_demo$id)
+folds <- cut(seq_along(id_list), breaks = n_folds, labels = FALSE)
+id_folds <- split(id_list, folds)
+
+# For each lambda in the grid
+for (i in seq_along(lambda_grid)) {
+  lambda <- lambda_grid[i]
+  fold_lls <- numeric(n_folds)
+  
+  for (fold in 1:n_folds) {
+    test_ids <- id_folds[[fold]]
+    train_ids <- setdiff(id_list, test_ids)
+    
+    train_df <- df_demo[df_demo$id %in% train_ids, ]
+    test_df <- df_demo[df_demo$id %in% test_ids, ]
+    
+    alt_train <- create_alt_matrices(train_df, selected_features)
+    alt_test <- create_alt_matrices(test_df, selected_features)
+    
+    alt_list_train <- lapply(1:n_alt, function(j) alt_train[[j]])
+    alt_list_test  <- lapply(1:n_alt, function(j) alt_test[[j]])
+    
+    choice_list_train <- lapply(1:n_alt, function(j) train_df[[paste0("choice", j)]])
+    choice_list_test  <- lapply(1:n_alt, function(j) test_df[[paste0("choice", j)]])
+    
+    start.values <- rep(0, n)
+    
+    res <- maxBFGS(
+      function(coeff) MNL(coeff, alt_list_train, choice_list_train, lambda),
+      start = start.values,
+      print.level = 0,
+      iterlim = 200,
+      finalHessian = FALSE
+    )
+    
+    # Evaluate unpenalized LL on test data
+    ll_out_sample <- MNL(res$estimate, alt_list_test, choice_list_test, lambda = 0)
+    fold_lls[fold] <- sum(ll_out_sample)
+  }
+  
+  mean_LL <- mean(fold_lls)
+  lambda_results$mean_LL[i] <- mean_LL
+  
+  if (mean_LL > best_LL) {
+    best_LL <- mean_LL
+    best_lambda <- lambda
+  }
+}
+
+cat("\n===== Lambda tuning summary (CV) =====\n")
+print(lambda_results)
+cat("\nBest lambda based on mean out-of-sample LL:", best_lambda, "\n")
