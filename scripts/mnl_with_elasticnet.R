@@ -194,7 +194,7 @@ sorted_coefficients <- coefficients_df %>%
 
 ########CHANGE AS NEEDED###############
 #top n coefficients from Elastic Net
-n <- 25
+n <- 10
 ########CHANGE AS NEEDED###############
 selected_features <- sorted_coefficients$feature[1:n]
 #print(selected_features)
@@ -212,7 +212,7 @@ alt3 <- alt_matrices$alt3
 #A required parameter in the code 
 nset <- nrow(df_demo)
 
-lambda_grid <- c(seq(0.05, 0.15, 0.01))
+lambda_grid <- c(seq(0.05, 0.1, 0.01))
 
 best_lambda <- NULL
 best_BIC <- Inf
@@ -284,9 +284,9 @@ for (i in seq_along(lambda_grid)) {
 
 }
 
-plot(lambda_results$lambda, lambda_results$BIC, type = "b", 
-     xlab = "Lambda (L1 Penalty)", ylab = "BIC", 
-     main = "Model Selection using BIC")
+# plot(lambda_results$lambda, lambda_results$BIC, type = "b", 
+#      xlab = "Lambda (L1 Penalty)", ylab = "BIC", 
+#      main = "Model Selection using BIC")
 
 #Give names to the betas, top n candidates
 # names(res$estimate) = selected_features
@@ -326,7 +326,7 @@ if(length(zero_coeffs) == 0){
 
 # Parameters
 n_folds <- 5
-lambda_grid <- seq(0.05, 0.15, 0.01)
+lambda_grid <- seq(0.05, 0.1, 0.01)
 best_lambda <- NULL
 best_LL <- -Inf
 lambda_results <- data.frame(lambda = lambda_grid, mean_LL = NA)
