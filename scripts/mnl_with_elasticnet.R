@@ -194,7 +194,7 @@ sorted_coefficients <- coefficients_df %>%
 
 ########CHANGE AS NEEDED###############
 #top n coefficients from Elastic Net
-n <- 10
+n <- 25
 ########CHANGE AS NEEDED###############
 selected_features <- sorted_coefficients$feature[1:n]
 #print(selected_features)
@@ -212,7 +212,7 @@ alt3 <- alt_matrices$alt3
 #A required parameter in the code 
 nset <- nrow(df_demo)
 
-lambda_grid <- c(seq(0.05, 0.1, 0.01))
+lambda_grid <- c(seq(0.001, 0.005, 0.001))
 
 best_lambda <- NULL
 best_BIC <- Inf
@@ -284,9 +284,9 @@ for (i in seq_along(lambda_grid)) {
 
 }
 
-# plot(lambda_results$lambda, lambda_results$BIC, type = "b", 
-#      xlab = "Lambda (L1 Penalty)", ylab = "BIC", 
-#      main = "Model Selection using BIC")
+plot(lambda_results$lambda, lambda_results$BIC, type = "b",
+     xlab = "Lambda (L1 Penalty)", ylab = "BIC",
+     main = "Model Selection using BIC")
 
 #Give names to the betas, top n candidates
 # names(res$estimate) = selected_features
@@ -307,7 +307,7 @@ MNL.res <- best_res
 print(summary(MNL.res))
 
 final_coeff <- best_res$estimate
-threshold <- 1e-3
+threshold <- 1e-4
 zero_indices <- which(abs(final_coeff) < threshold)
 zero_coeffs <- names(final_coeff)[zero_indices]
 
@@ -324,9 +324,10 @@ if(length(zero_coeffs) == 0){
 
 ###Cross validated lasso parameter
 
-# Parameters
+#Parameters
 n_folds <- 5
-lambda_grid <- seq(0.05, 0.1, 0.01)
+n_alt <- 3
+lambda_grid <- seq(0.001, 0.01, 0.001)
 best_lambda <- NULL
 best_LL <- -Inf
 lambda_results <- data.frame(lambda = lambda_grid, mean_LL = NA)
@@ -341,46 +342,52 @@ id_folds <- split(id_list, folds)
 for (i in seq_along(lambda_grid)) {
   lambda <- lambda_grid[i]
   fold_lls <- numeric(n_folds)
-  
+
   for (fold in 1:n_folds) {
     test_ids <- id_folds[[fold]]
     train_ids <- setdiff(id_list, test_ids)
-    
+
     train_df <- df_demo[df_demo$id %in% train_ids, ]
     test_df <- df_demo[df_demo$id %in% test_ids, ]
-    
+
     alt_train <- create_alt_matrices(train_df, selected_features)
     alt_test <- create_alt_matrices(test_df, selected_features)
-    
+
     alt_list_train <- lapply(1:n_alt, function(j) alt_train[[j]])
     alt_list_test  <- lapply(1:n_alt, function(j) alt_test[[j]])
-    
+
     choice_list_train <- lapply(1:n_alt, function(j) train_df[[paste0("choice", j)]])
     choice_list_test  <- lapply(1:n_alt, function(j) test_df[[paste0("choice", j)]])
-    
+
     start.values <- rep(0, n)
-    
+
     res <- maxBFGS(
-      function(coeff) MNL(coeff, alt_list_train, choice_list_train, lambda),
+      function(coeff) MNL_cv(coeff, alt_list_train, choice_list_train, lambda),
       start = start.values,
       print.level = 0,
       iterlim = 200,
       finalHessian = FALSE
     )
-    
+
     # Evaluate unpenalized LL on test data
-    ll_out_sample <- MNL(res$estimate, alt_list_test, choice_list_test, lambda = 0)
+    ll_out_sample <- MNL_cv(res$estimate, alt_list_test, choice_list_test, lambda = 0)
     fold_lls[fold] <- sum(ll_out_sample)
   }
-  
+
   mean_LL <- mean(fold_lls)
   lambda_results$mean_LL[i] <- mean_LL
-  
+
   if (mean_LL > best_LL) {
     best_LL <- mean_LL
     best_lambda <- lambda
   }
 }
+
+plot(lambda_results$lambda, lambda_results$mean_LL,
+     type = "b",  # both points and lines
+     xlab = "Lambda",
+     ylab = "Mean Out-of-Sample Log-Likelihood",
+     main = "CV Log-Likelihood vs Lambda")
 
 cat("\n===== Lambda tuning summary (CV) =====\n")
 print(lambda_results)

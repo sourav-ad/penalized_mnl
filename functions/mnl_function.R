@@ -46,22 +46,31 @@ MNL <- function(coeff, alt1, alt2, alt3, lambda, final_eval = FALSE) {
 
 
 
-##MNL for cross validation
+nrep <- 6
+intercept_index<- 1
 
-MNL_cv <- function(coeff, alt1, alt2, alt3, choice1, choice2, choice3, lambda, final_eval = FALSE){
+#Generalized function
+MNL_cv <- function(coeff, alt_list, choice_list, lambda, final_eval = FALSE) {
+  n_alt <- length(alt_list)  # Number of alternatives
   
-  util1 = (alt1 %*% coeff[1:n])
-  util2 = (alt2 %*% coeff[1:n])
-  util3 = (alt3 %*% coeff[1:n])
+  # Compute utilities for each alternative
+  utils <- lapply(alt_list, function(alt) alt %*% coeff[1:ncol(alt)])
   
-  innerArg = ((exp(util1) * choice1) + (exp(util2) * choice2) + (exp(util3) * choice3)) / ( exp(util1) + exp(util2) + exp(util3))
+  # Exponentiate utilities
+  exp_utils <- lapply(utils, exp)
   
-  choice_probs = colprods(matrix(innerArg, nrow=nrep))
-
-  # log-likelihood
-  LL = log(choice_probs)
+  # Compute numerator: sum(exp(util) * choice)
+  numerator <- Reduce(`+`, mapply(`*`, exp_utils, choice_list, SIMPLIFY = FALSE))
   
-  #We need a vector of log likelihoods
+  # Compute denominator: sum(exp(util))
+  denominator <- Reduce(`+`, exp_utils)
+  
+  # Compute choice probabilities
+  choice_probs <- colprods(matrix(numerator / denominator, nrow = nrep))
+  
+  # Log-likelihood
+  LL <- log(choice_probs)
+  
   if (length(LL) == 1) {
     stop("Error: LL is returning a single scalar instead of a vector.")
   }

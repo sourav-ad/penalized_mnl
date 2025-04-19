@@ -23,6 +23,10 @@ source("functions/utility_functions.R")
 source("functions/mnl_function.R")
 source("functions/pre_process.R")
 
+#Requored parameters
+nset <- nrow(df_demo)
+#Control the lambda grid
+lambda_grid <- c(seq(0.001, 0.005, 0.001))
 
 choice_model <- function(n_alt, vars_vary, vars_constant, n){
   #Data (change path as needed)
@@ -142,6 +146,7 @@ choice_model <- function(n_alt, vars_vary, vars_constant, n){
   nset <- nrow(df_demo)
   start.values <- rep(0, n)
   choice_list <- lapply(1:n_alt, function(i) df_demo[[paste0("choice", i)]])
+  
   
   # estimate model (without inverting Hessian)
   res = maxBFGS(
