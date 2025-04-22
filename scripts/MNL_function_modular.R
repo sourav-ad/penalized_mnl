@@ -278,7 +278,7 @@ tune_lambda_cv <- function(df_demo, selected_features, lambda_grid, n_alt = 3, n
   return(list(best_lambda = best_lambda, lambda_results = lambda_results))
 }
 
-
+#Implement functions
 
 output <- data_wide_to_long(data, n_alt = 3)
 df_demo <- output$df_demo
@@ -314,7 +314,7 @@ results <- lasso_lambda_bic(
   alt2 = alt2,
   alt3 = alt3,
   df_long = df_long,
-  n = n
+  n = 10
 )
 
 
@@ -323,5 +323,5 @@ results_cv <- tune_lambda_cv(
   selected_features, 
   lambda_grid, 
   n_alt = 3, 
-  n = 15, 
+  n = 10, 
   n_folds = 5)

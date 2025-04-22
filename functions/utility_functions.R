@@ -44,6 +44,10 @@ create_alt_matrices <- function(df, selected_features) {
   alt1 <- do.call(cbind, alt1_list)
   alt2 <- do.call(cbind, alt2_list)
   alt3 <- do.call(cbind, alt3_list)
+  
+  # alt1 <- as.matrix(do.call(cbind, alt1_list)) * 1.0
+  # alt2 <- as.matrix(do.call(cbind, alt2_list)) * 1.0
+  # alt3 <- as.matrix(do.call(cbind, alt3_list)) * 1.0
 
   return(list(alt1 = alt1, alt2 = alt2, alt3 = alt3))
 }
