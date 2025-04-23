@@ -7,7 +7,7 @@ This repository provides an end-to-end pipeline to estimate a **Multinomial Logi
 ## Features
 
 -   Uses long-format discrete choice experiment data.
--   Constructs interaction terms between user-specified covariates and user-variant covariates.
+-   Constructs interaction terms between user-specific covariates and user-variant covariates.
 -   Applies both BIC-based and cross-validation-based tuning of the L1 + L2 regularization parameter.
 -   Fits the customized MNL model.
 -   Provides coefficient summaries, statistical significance and shrinkage status for covariates.
