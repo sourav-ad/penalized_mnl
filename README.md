@@ -53,5 +53,5 @@ This repository provides an end-to-end pipeline to estimate a **Multinomial Logi
 Please set working directory and file paths as needed. To run, use:
 
 ```         
-source("mnl_execution_L1L2.R")
+source("scripts/mnl_execution_L1L2.R")
 ```
