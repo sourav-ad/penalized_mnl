@@ -7,7 +7,7 @@ nrep <- 6
 
 intercept_index <- 1
 
-MNL <- function(coeff, alt1, alt2, alt3, lambda, final_eval = FALSE) {
+MNL <- function(coeff, alt1, alt2, alt3, lambda, alpha = 0.5, final_eval = FALSE) {
 
   # util1 = (alt1 %*% coeff[1:n])
   # util2 = (alt2 %*% coeff[1:n])
@@ -31,18 +31,23 @@ MNL <- function(coeff, alt1, alt2, alt3, lambda, final_eval = FALSE) {
   }
 
   #L1 norm
-  penalty <- if(!is.null(intercept_index)){
-    lambda * sum(abs(coeff[-intercept_index]))
+  # penalty <- if(!is.null(intercept_index)){
+  #   lambda * sum(abs(coeff[-intercept_index]))
+  # } else {
+  #   lambda * sum(abs(coeff))
+  # }
+
+  #L1 + L2
+  penalty <- if (!is.null(intercept_index)) {
+    coeff_excl_intercept <- coeff[-intercept_index]
+    lambda * (alpha * sum(abs(coeff_excl_intercept)) + ((1 - alpha) / 2) * sum(coeff_excl_intercept^2))
   } else {
-    lambda * sum(abs(coeff))
+    lambda * (alpha * sum(abs(coeff)) + ((1 - alpha) / 2) * sum(coeff^2))
   }
-
-  LL_lasso <- LL - penalty
-  #return the penalized log likelihood
-  return(LL_lasso)
+  
+  LL_elastic_net <- LL - penalty
+  return(LL_elastic_net)
 }
-
-
 
 
 
@@ -50,7 +55,7 @@ nrep <- 6
 intercept_index<- 1
 
 #Generalized function
-MNL_cv <- function(coeff, alt_list, choice_list, lambda, final_eval = FALSE) {
+MNL_cv <- function(coeff, alt_list, choice_list, lambda, alpha = 0.5, final_eval = FALSE) {
   n_alt <- length(alt_list)  # Number of alternatives
   
   # Compute utilities for each alternative
@@ -76,13 +81,20 @@ MNL_cv <- function(coeff, alt_list, choice_list, lambda, final_eval = FALSE) {
   }
   
   #L1 norm
-  penalty <- if(!is.null(intercept_index)){
-    lambda * sum(abs(coeff[-intercept_index]))
+  # penalty <- if(!is.null(intercept_index)){
+  #   lambda * sum(abs(coeff[-intercept_index]))
+  # } else {
+  #   lambda * sum(abs(coeff))
+  # }
+  
+  #L1 + L2, elastic net
+  penalty <- if (!is.null(intercept_index)) {
+    coeff_excl_intercept <- coeff[-intercept_index]
+    lambda * (alpha * sum(abs(coeff_excl_intercept)) + ((1 - alpha) / 2) * sum(coeff_excl_intercept^2))
   } else {
-    lambda * sum(abs(coeff))
+    lambda * (alpha * sum(abs(coeff)) + ((1 - alpha) / 2) * sum(coeff^2))
   }
   
-  LL_lasso <- LL - penalty
-  #return the penalized log likelihood
-  return(LL_lasso)
+  LL_elastic_net <- LL - penalty
+  return(LL_elastic_net)
 }

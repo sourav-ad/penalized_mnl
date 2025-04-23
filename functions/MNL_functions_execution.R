@@ -18,18 +18,10 @@ install_if_missing <- function(packages) {
 
 install_if_missing(required_packages)
 
-
-# n_cores <- parallel::detectCores() - 1  #1 core for OS
-# cl <- makeCluster(n_cores)
-# registerDoParallel(cl)
-
 #Source files
 source("functions/utility_functions.R")
 source("functions/mnl_function.R")
 source("functions/pre_process.R")
-
-#Data
-data <- read.csv("data/doggerbank_full_973_wide.csv")
 
 
 data_wide_to_long <- function(data, n_alt = 3){
@@ -140,104 +132,7 @@ run_elastic_net <- function(X, y, alpha = 0.5, n = 15){
 }
 
 
-lasso_lambda_bic <- function(lambda_grid, alt1, alt2, alt3, df_long, n = 10, 
-                             threshold = 1e-4) {
-  best_lambda <- NULL
-  best_BIC <- Inf
-  best_res <- NULL
-  lambda_results <- data.frame(lambda = lambda_grid, BIC = NA, LL = NA)
-  N <- nrow(df_long)
-  
-  for (i in seq_along(lambda_grid)) {
-    lambda <- lambda_grid[i]
-    start.values <- rep(0, n)
-    
-    res <- maxBFGS(
-      function(coeff) MNL(coeff, alt1, alt2, alt3, lambda, final_eval = FALSE),
-      grad = NULL,
-      hess = NULL,
-      start = start.values,
-      fixed = NULL,
-      print.level = 0,
-      iterlim = 200,
-      constraints = NULL,
-      tol = 1e-25,
-      reltol = 1e-25,
-      finalHessian = FALSE,
-      parscale = rep(1, length(start.values))
-    )
-    
-    invisible(MNL(res$estimate, alt1, alt2, alt3, lambda, final_eval = TRUE))
-    start.values <- coef(res)
-    
-    res <- maxLik(
-      function(coeff) MNL(coeff, alt1, alt2, alt3, lambda, final_eval = TRUE),
-      grad = NULL,
-      hess = NULL,
-      start = start.values,
-      fixed = NULL,
-      print.level = 0,
-      method = "BHHH",
-      iterlim = 2,
-      constraints = NULL,
-      tol = 1e-04,
-      reltol = 1e-04,
-      finalHessian = TRUE
-    )
-    
-    LL_unpenalized <- sum(MNL(res$estimate, alt1, alt2, alt3, lambda = 0, final_eval = FALSE))
-    lambda_results$LL[i] <- LL_unpenalized
-    
-    active_coeffs <- coef(res)[abs(coef(res)) >= threshold]
-    k <- length(active_coeffs)
-    BIC_lasso <- -2 * LL_unpenalized + k * log(N)
-    lambda_results$BIC[i] <- BIC_lasso
-    
-    if (BIC_lasso < best_BIC) {
-      best_lambda <- lambda
-      best_BIC <- BIC_lasso
-      best_res <- res
-    }
-  }
-  
-  # cat("\n====Log-Likelihoods and BIC by Lambda(L1)====\n")
-  # print(lambda_results)
-  
-  lambda_results$k[i] <- k
-  
-  # Plot the BIC curve
-  plot(lambda_results$lambda, lambda_results$BIC, type = "b", col = "blue",
-       xlab = "L1 lambda)", ylab = "BIC",
-       main = "Lasso parameter with BIC")
-  
-  par(new = TRUE)
-  plot(lambda_results$lambda, lambda_results$k, type = "b", col = "red",
-       axes = FALSE, xlab = "", ylab = "", ylim = range(lambda_results$k, na.rm = TRUE))
-  axis(side = 4, at = pretty(lambda_results$k), col = "red", col.axis = "red")
-  mtext("Number of Active Coefficients (k)", side = 4, line = 3, col = "red")
-  
-  # Add a legend
-  legend("topleft", legend = c("BIC", "Non zero coeff"),
-         col = c("blue", "red"), lty = 1, bty = "n")
-  
-  LL_unpenalized_best <- sum(MNL(best_res$estimate, alt1, alt2, alt3, lambda = 0, final_eval = FALSE))
-  
-  cat("\n====Lambda tuning(BIC)====\n")
-  print(lambda_results)
-  cat("\nBest lambda based on BIC:", best_lambda, "\n")
-  cat("Corresponding BIC:", best_BIC, "\n")
-  cat("Corresponding Log-Likelihood:", LL_unpenalized_best, "\n")
-  
-  return(list(
-    best_lambda = best_lambda,
-    best_BIC = best_BIC,
-    best_model = best_res,
-    best_LL = LL_unpenalized_best,
-    lambda_results = lambda_results
-  ))
-}
-
-lasso_lambda_bic_test <- function(lambda_grid, alt_matrices, df_long, n = 10, 
+lasso_lambda_bic <- function(lambda_grid, alt_matrices, df_long, n = 10, 
                              threshold = 1e-4) {
   best_lambda <- NULL
   best_BIC <- Inf
@@ -255,7 +150,7 @@ lasso_lambda_bic_test <- function(lambda_grid, alt_matrices, df_long, n = 10,
     start.values <- rep(0, n)
     
     res <- maxBFGS(
-      function(coeff) MNL(coeff, alt1, alt2, alt3, lambda, final_eval = FALSE),
+      function(coeff) MNL(coeff, alt1, alt2, alt3, lambda, alpha = 0.5, final_eval = FALSE),
       grad = NULL,
       hess = NULL,
       start = start.values,
@@ -269,11 +164,11 @@ lasso_lambda_bic_test <- function(lambda_grid, alt_matrices, df_long, n = 10,
       parscale = rep(1, length(start.values))
     )
     
-    invisible(MNL(res$estimate, alt1, alt2, alt3, lambda, final_eval = TRUE))
+    invisible(MNL(res$estimate, alt1, alt2, alt3, lambda, alpha = 0.5, final_eval = TRUE))
     start.values <- coef(res)
     
     res <- maxLik(
-      function(coeff) MNL(coeff, alt1, alt2, alt3, lambda, final_eval = TRUE),
+      function(coeff) MNL(coeff, alt1, alt2, alt3, lambda, alpha = 0.5, final_eval = TRUE),
       grad = NULL,
       hess = NULL,
       start = start.values,
@@ -287,7 +182,7 @@ lasso_lambda_bic_test <- function(lambda_grid, alt_matrices, df_long, n = 10,
       finalHessian = TRUE
     )
     
-    LL_unpenalized <- sum(MNL(res$estimate, alt1, alt2, alt3, lambda = 0, final_eval = FALSE))
+    LL_unpenalized <- sum(MNL(res$estimate, alt1, alt2, alt3, lambda = 0, alpha = 0.5, final_eval = FALSE))
     lambda_results$LL[i] <- LL_unpenalized
     
     active_coeffs <- coef(res)[abs(coef(res)) >= threshold]
@@ -307,22 +202,7 @@ lasso_lambda_bic_test <- function(lambda_grid, alt_matrices, df_long, n = 10,
   
   lambda_results$k[i] <- k
   
-  # Plot the BIC curve
-  plot(lambda_results$lambda, lambda_results$BIC, type = "b", col = "blue",
-       xlab = "L1 lambda)", ylab = "BIC",
-       main = "Lasso parameter with BIC")
-  
-  par(new = TRUE)
-  plot(lambda_results$lambda, lambda_results$k, type = "b", col = "red",
-       axes = FALSE, xlab = "", ylab = "", ylim = range(lambda_results$k, na.rm = TRUE))
-  axis(side = 4, at = pretty(lambda_results$k), col = "red", col.axis = "red")
-  mtext("Number of Active Coefficients (k)", side = 4, line = 3, col = "red")
-  
-  # Add a legend
-  legend("topleft", legend = c("BIC", "Non zero coeff"),
-         col = c("blue", "red"), lty = 1, bty = "n")
-  
-  LL_unpenalized_best <- sum(MNL(best_res$estimate, alt1, alt2, alt3, lambda = 0, final_eval = FALSE))
+  LL_unpenalized_best <- sum(MNL(best_res$estimate, alt1, alt2, alt3, lambda = 0, alpha = 0.5, final_eval = FALSE))
   
   cat("\n====Lambda tuning(BIC)====\n")
   print(lambda_results)
@@ -338,6 +218,7 @@ lasso_lambda_bic_test <- function(lambda_grid, alt_matrices, df_long, n = 10,
     lambda_results = lambda_results
   ))
 }
+
 
 tune_lambda_cv <- function(df_demo, selected_features, lambda_grid, n_alt = 3, n = 10, n_folds = 5) {
   #Create folds (respondent-wise split)
@@ -373,7 +254,7 @@ tune_lambda_cv <- function(df_demo, selected_features, lambda_grid, n_alt = 3, n
       start.values <- rep(0, n)
       
       res <- maxBFGS(
-        function(coeff) MNL_cv(coeff, alt_list_train, choice_list_train, lambda),
+        function(coeff) MNL_cv(coeff, alt_list_train, choice_list_train, lambda, alpha = 0.5, final_eval = FALSE),
         start = start.values,
         print.level = 0,
         iterlim = 200,
@@ -381,7 +262,7 @@ tune_lambda_cv <- function(df_demo, selected_features, lambda_grid, n_alt = 3, n
       )
       
       # Evaluate unpenalized LL on test data
-      ll_out_sample <- MNL_cv(res$estimate, alt_list_test, choice_list_test, lambda = 0)
+      ll_out_sample <- MNL_cv(res$estimate, alt_list_test, choice_list_test, lambda = 0, alpha = 0.5)
       fold_lls[fold] <- sum(ll_out_sample)
     }
     
@@ -394,15 +275,27 @@ tune_lambda_cv <- function(df_demo, selected_features, lambda_grid, n_alt = 3, n
     }
   }
   
-  # Plot
-  plot(lambda_results$lambda, lambda_results$mean_LL,
-       type = "b", xlab = "Lambda",
-       ylab = "Mean Out-of-Sample Log-Likelihood",
-       main = "CV Log-Likelihood vs Lambda")
-  
   cat("\n===== Lambda tuning summary (CV) =====\n")
   print(lambda_results)
   cat("\nBest lambda based on mean out-of-sample LL:", best_lambda, "\n")
   
   return(list(best_lambda = best_lambda, lambda_results = lambda_results))
+}
+
+
+summary_table_mnl <- function(model, selected_features, threshold = 1e-3){
+  names(model$estimate) <- selected_features
+  summary_res <- summary(model)
+  coef_df <- as.data.frame(summary_res$estimate)
+  coef_df$Feature <- rownames(coef_df)
+  colnames(coef_df) <- c("Estimate", "Std.Error", "t.value", "p.value", "Feature")
+  coef_df$Signif <- symnum(coef_df$p.value, corr = FALSE, na = FALSE,
+                           cutpoints = c(0, 0.001, 0.01, 0.05, 0.1, 1),
+                           symbols = c("***", "**", "*", ".", " "))
+  threshold <- 1e-3
+  coef_df$Shrunk <- ifelse(abs(coef_df$Estimate) < threshold, "Yes", "No")
+  final_table <- coef_df[, c("Feature", "Estimate", "Std.Error", "t.value", "p.value", "Signif", "Shrunk")]
+  final_table <- final_table[order(-abs(final_table$Estimate)), ]
+  print(final_table, row.names = FALSE)
+  return(final_table)
 }
