@@ -24,6 +24,8 @@ source("functions/mnl_function.R")
 source("functions/pre_process.R")
 
 
+#To change from wide format to long format
+
 data_wide_to_long <- function(data, n_alt = 3){
   data <- data[, !names(data) %in% c('choice1', 'choice2', 'choice3', 'choice4', 'choice5', 'choice6')]
   data$choice <- 0
@@ -70,6 +72,7 @@ data_wide_to_long <- function(data, n_alt = 3){
 }
 
 
+#Managing covariate interactions
 
 create_interaction_features <- function(df_long, constant_vars, changing_vars){
   df_interactions <- df_long[, constant_vars]
@@ -93,8 +96,8 @@ create_interaction_features <- function(df_long, constant_vars, changing_vars){
   return(final_df_scaled)
 }
 
-# X <- as.matrix(final_df_scaled)
-# y <- as.numeric(df_long$chosen)
+
+#Optional (can be used for comparision if needed)
 
 run_elastic_net <- function(X, y, alpha = 0.5, n = 15){
   set.seed(123)
@@ -131,6 +134,7 @@ run_elastic_net <- function(X, y, alpha = 0.5, n = 15){
   return(selected_features)
 }
 
+#Elastic net parameter tuning using BIC values
 
 lasso_lambda_bic <- function(lambda_grid, alt_matrices, df_long, n = 10, 
                              threshold = 1e-4) {
@@ -220,6 +224,8 @@ lasso_lambda_bic <- function(lambda_grid, alt_matrices, df_long, n = 10,
 }
 
 
+#Elastic net parameter tuning using 5 fold CV on out of sample log likelihood
+
 tune_lambda_cv <- function(df_demo, selected_features, lambda_grid, n_alt = 3, n = 10, n_folds = 5) {
   #Create folds (respondent-wise split)
   set.seed(123)
@@ -282,6 +288,8 @@ tune_lambda_cv <- function(df_demo, selected_features, lambda_grid, n_alt = 3, n
   return(list(best_lambda = best_lambda, lambda_results = lambda_results))
 }
 
+
+#Print a final summary table with detailed information about the covariates
 
 summary_table_mnl <- function(model, selected_features, threshold = 1e-3){
   names(model$estimate) <- selected_features

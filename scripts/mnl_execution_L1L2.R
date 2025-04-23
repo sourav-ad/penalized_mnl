@@ -70,12 +70,11 @@ results <- lasso_lambda_bic(
 
 lambda_results <- results$lambda_results
 
-# Plot the BIC curve
+# Plot BIC values
 plot(lambda_results$lambda, lambda_results$BIC, type = "b", col = "blue",
      xlab = "L1 lambda)", ylab = "BIC",
      main = "Lasso parameter with BIC")
 
-# # Add a legend
 # legend("topleft", legend = c("BIC", "Non zero coeff"),
 #        col = c("blue", "red"), lty = 1, bty = "n")
 
@@ -88,7 +87,9 @@ results_cv <- tune_lambda_cv(
   n_folds = 5)
 
 lambda_results_cv <- results_cv$lambda_results
-  
+
+#Plot mean LL
+
 plot(lambda_results_cv$lambda, lambda_results_cv$mean_LL,
      type = "b", xlab = "Lambda",
      ylab = "Mean Out-of-Sample Log-Likelihood",
@@ -105,7 +106,7 @@ plot(lambda_results_cv$lambda, lambda_results_cv$mean_LL,
 
 
 #Show the final model
-
+#Using CV tuned parameter
 
 start.values <- rep(0, length(selected_features))
 
@@ -119,17 +120,3 @@ final_model <- maxLik(
 )
 
 coefficients_table <- summary_table_mnl(final_model, selected_features)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
