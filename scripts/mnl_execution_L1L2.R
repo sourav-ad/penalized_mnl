@@ -1,7 +1,7 @@
 #Libraries
 
 required_packages <- c("maxLik", "matrixStats", "tidyr", "dplyr", "glmnet", "bgw", 
-                       "Rfast")
+                       "Rfast", "future.apply", "future")
 
 install_if_missing <- function(packages) {
   missing_packages <- packages[!(packages %in% installed.packages()[, "Package"])]
@@ -18,7 +18,7 @@ install_if_missing(required_packages)
 
 #Source files
 source("functions/utility_functions.R")
-source("functions/utility_functions_generalized.R")
+source("functions/utility_functions_generalized.R") #has function create_alt_matrices2()
 source("functions/mnl_function.R")
 source("functions/pre_process.R")
 source("functions/MNL_functions_execution.R")
@@ -68,15 +68,28 @@ n_alt <- 3
 alt_list <- lapply(1:n_alt, function(j) alt_matrices[[j]])
 choice_list <- lapply(1:n_alt, function(j) df_demo[[paste0("choice", j)]])
 
+plan(multisession)
+options(future.rng.onMisuse = "ignore")
 
 #Adjust grid as needed
 lambda_grid <- seq(0.001, 0.01, 0.001)
 N <- nrow(df_long)
 
-results <- lasso_lambda_bic(
+##Sequential
+# results <- lasso_lambda_bic(
+#   lambda_grid = lambda_grid,
+#   alt_matrices = alt_matrices,
+#   df_long = df_long,
+#   n = num_covariates,
+#   threshold = 1e-4,
+#   N
+# )
+
+##Parallel
+results <- lasso_lambda_bic_parallel(
   lambda_grid = lambda_grid,
-  alt_matrices = alt_matrices,
-  df_long = df_long,
+  alt_list,
+  choice_list,
   n = num_covariates,
   threshold = 1e-4,
   N
@@ -92,13 +105,26 @@ plot(lambda_results$lambda, lambda_results$BIC, type = "b", col = "blue",
 # legend("topleft", legend = c("BIC", "Non zero coeff"),
 #        col = c("blue", "red"), lty = 1, bty = "n")
 
-results_cv <- tune_lambda_cv(
+# #Sequential
+# results_cv <- tune_lambda_cv(
+#   df_demo, 
+#   selected_features, 
+#   lambda_grid, 
+#   n_alt = 3, 
+#   n = num_covariates, 
+#   n_folds = 5
+#   )
+
+#Parallel
+results_cv <- tune_lambda_cv_parallel(
   df_demo, 
   selected_features, 
-  lambda_grid, 
+  lambda_grid,
+  demographic_vars, 
   n_alt = 3, 
   n = num_covariates, 
-  n_folds = 5)
+  n_folds = 5
+)
 
 lambda_results_cv <- results_cv$lambda_results
 

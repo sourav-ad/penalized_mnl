@@ -326,3 +326,160 @@ summary_table_mnl <- function(model, selected_features, threshold = 1e-3){
   print(final_table, row.names = FALSE)
   return(final_table)
 }
+
+
+
+##Parallelization function
+
+lasso_lambda_bic_parallel <- function(lambda_grid, alt_list, choice_list, n = 10, 
+                                      threshold = 1e-4, N, alpha = 0.5) {
+  library(future.apply)
+  
+  # Make sure the plan is set before running this
+  # e.g., plan(multisession)
+  
+  results_list <- future_lapply(lambda_grid, function(lambda) {
+    start.values <- rep(0, n)
+    cat("Running for lambda =", lambda, "on PID", Sys.getpid(), "\n")
+    # First optimization with maxBFGS
+    res <- maxBFGS(
+      function(coeff) MNL(coeff, alt_list, choice_list, lambda, alpha = alpha,
+                          final_eval = FALSE, nrep = 6, intercept_index = 1),
+      grad = NULL,
+      hess = NULL,
+      start = start.values,
+      fixed = NULL,
+      print.level = 0,
+      iterlim = 200,
+      constraints = NULL,
+      tol = 1e-25,
+      reltol = 1e-25,
+      finalHessian = FALSE,
+      parscale = rep(1, length(start.values))
+    )
+    
+    # Refined optimization with maxLik
+    start.values <- coef(res)
+    
+    res <- maxLik(
+      function(coeff) MNL(coeff, alt_list, choice_list, lambda, alpha = alpha,
+                          final_eval = FALSE, nrep = 6, intercept_index = 1),
+      grad = NULL,
+      hess = NULL,
+      start = start.values,
+      fixed = NULL,
+      print.level = 0,
+      method = "BHHH",
+      iterlim = 2,
+      constraints = NULL,
+      tol = 1e-04,
+      reltol = 1e-04,
+      finalHessian = TRUE
+    )
+    
+    # Compute unpenalized LL for BIC
+    LL_unpenalized <- sum(MNL_unpenalized(res$estimate, alt_list, choice_list,
+                                          final_eval = FALSE, nrep = 6))
+    
+    active_coeffs <- coef(res)[abs(coef(res)) >= threshold]
+    k <- length(active_coeffs)
+    BIC_lasso <- -2 * LL_unpenalized + k * log(N)
+    
+    return(list(lambda = lambda, BIC = BIC_lasso, LL = LL_unpenalized, k = k, res = res))
+  })
+  
+  # Bind results into dataframe
+  lambda_results <- do.call(rbind, lapply(results_list, function(r) {
+    data.frame(lambda = r$lambda, BIC = r$BIC, LL = r$LL, k = r$k)
+  }))
+  
+  # Find the best result
+  best_idx <- which.min(lambda_results$BIC)
+  best_lambda <- lambda_results$lambda[best_idx]
+  best_BIC <- lambda_results$BIC[best_idx]
+  best_LL <- lambda_results$LL[best_idx]
+  best_res <- results_list[[best_idx]]$res
+  
+  cat("\n====Lambda tuning (BIC)====\n")
+  print(lambda_results)
+  cat("\nBest lambda based on BIC:", best_lambda, "\n")
+  cat("Corresponding BIC:", best_BIC, "\n")
+  cat("Corresponding Log-Likelihood:", best_LL, "\n")
+  
+  return(list(
+    best_lambda = best_lambda,
+    best_BIC = best_BIC,
+    best_model = best_res,
+    best_LL = best_LL,
+    lambda_results = lambda_results
+  ))
+}
+
+#Tune using CV
+
+tune_lambda_cv_parallel <- function(df_demo, selected_features, lambda_grid,
+                                    demographic_vars, n_alt = 3, n = 10, n_folds = 5) {
+  library(future.apply)
+  
+  # Create folds (respondent-wise split)
+  set.seed(123)
+  id_list <- unique(df_demo$id)
+  folds <- cut(seq_along(id_list), breaks = n_folds, labels = FALSE)
+  id_folds <- split(id_list, folds)
+  
+  # Parallelized outer loop
+  lambda_results_list <- future_lapply(lambda_grid, function(lambda) {
+    
+    cat("Running lambda =", lambda, "on PID", Sys.getpid(), "\n")
+    
+    fold_lls <- numeric(n_folds)
+    
+    for (fold in 1:n_folds) {
+      test_ids <- id_folds[[fold]]
+      train_ids <- setdiff(id_list, test_ids)
+      
+      train_df <- df_demo[df_demo$id %in% train_ids, ]
+      test_df <- df_demo[df_demo$id %in% test_ids, ]
+      
+      alt_train <- create_alt_matrices2(train_df, selected_features, demographic_vars, n_alt)
+      alt_test  <- create_alt_matrices2(test_df, selected_features, demographic_vars, n_alt)
+      
+      alt_list_train <- lapply(1:n_alt, function(j) alt_train[[j]])
+      alt_list_test  <- lapply(1:n_alt, function(j) alt_test[[j]])
+      
+      choice_list_train <- lapply(1:n_alt, function(j) train_df[[paste0("choice", j)]])
+      choice_list_test  <- lapply(1:n_alt, function(j) test_df[[paste0("choice", j)]])
+      
+      start.values <- rep(0, n)
+      
+      res <- maxBFGS(
+        function(coeff) MNL(coeff, alt_list_train, choice_list_train, lambda, alpha = 0.5, final_eval = FALSE,
+                            nrep = 6, intercept_index = 1),
+        start = start.values,
+        print.level = 0,
+        iterlim = 200,
+        finalHessian = FALSE
+      )
+      
+      ll_out_sample <- MNL_unpenalized(res$estimate, alt_list_test, choice_list_test, final_eval = FALSE,
+                                       nrep = 6)
+      fold_lls[fold] <- sum(ll_out_sample)
+    }
+    
+    mean_LL <- mean(fold_lls)
+    return(data.frame(lambda = lambda, mean_LL = mean_LL))
+  })
+  
+  # Combine results
+  lambda_results <- do.call(rbind, lambda_results_list)
+  
+  best_idx <- which.max(lambda_results$mean_LL)
+  best_lambda <- lambda_results$lambda[best_idx]
+  best_LL <- lambda_results$mean_LL[best_idx]
+  
+  cat("\n===== Lambda tuning summary (CV, Parallel) =====\n")
+  print(lambda_results)
+  cat("\nBest lambda based on mean out-of-sample LL:", best_lambda, "\n")
+  
+  return(list(best_lambda = best_lambda, lambda_results = lambda_results))
+}

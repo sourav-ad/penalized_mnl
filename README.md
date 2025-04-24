@@ -11,6 +11,7 @@ This repository provides an end-to-end pipeline to estimate a **Multinomial Logi
 -   Applies both BIC-based and cross-validation-based tuning of the L1 + L2 regularization parameter.
 -   Fits the customized MNL model.
 -   Provides coefficient summaries, statistical significance and shrinkage status for covariates.
+-   Uses parallelization for scalability.
 
 ------------------------------------------------------------------------
 
@@ -43,8 +44,8 @@ This repository provides an end-to-end pipeline to estimate a **Multinomial Logi
 -   `matrixStats`
 -   `bgw`
 -   `glmnet`
--   `doParallel` (optional, for parallel execution)
--   `foreach` (optional, for parallel execution)
+-   `future.apply`
+-   `future`
 
 ------------------------------------------------------------------------
 
