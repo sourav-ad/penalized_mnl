@@ -18,6 +18,7 @@ install_if_missing(required_packages)
 
 #Source files
 source("functions/utility_functions.R")
+source("functions/utility_functions_generalized.R")
 source("functions/mnl_function.R")
 source("functions/pre_process.R")
 source("functions/MNL_functions_execution.R")
@@ -47,25 +48,38 @@ final_df_scaled <- create_interaction_features(df_long, choice_vars, demographic
 #selected_features <- run_elastic_net(X, y, alpha = 0.5, n = top_n)
 # so I think the ultimate goal would be to replace glment with our own L1/L2 routine and we are that close !!
 
-num_covariates <- 10
+num_covariates <- 25
 selected_features <- colnames(final_df_scaled)[1:num_covariates]
 
 
-alt_matrices <- create_alt_matrices(df_demo, selected_features, demographic_vars)
+alt_matrices <- create_alt_matrices2(df_demo, 
+                                     selected_features = selected_features, 
+                                     demographic_vars = demographic_vars, 
+                                     n_alt = 3
+                                    )
 
 #utility function matrices
 alt1 <- alt_matrices$alt1
+#print(nrow(alt1))
 alt2 <- alt_matrices$alt2
 alt3 <- alt_matrices$alt3
 
+n_alt <- 3
+alt_list <- lapply(1:n_alt, function(j) alt_matrices[[j]])
+choice_list <- lapply(1:n_alt, function(j) df_demo[[paste0("choice", j)]])
+
+
 #Adjust grid as needed
 lambda_grid <- seq(0.001, 0.01, 0.001)
+N <- nrow(df_long)
 
 results <- lasso_lambda_bic(
   lambda_grid = lambda_grid,
   alt_matrices = alt_matrices,
   df_long = df_long,
-  n = num_covariates
+  n = num_covariates,
+  threshold = 1e-4,
+  N
 )
 
 lambda_results <- results$lambda_results
@@ -111,7 +125,8 @@ plot(lambda_results_cv$lambda, lambda_results_cv$mean_LL,
 start.values <- rep(0, length(selected_features))
 
 final_model <- maxLik(
-  function(coeff) MNL(coeff, alt1, alt2, alt3, lambda = results_cv$best_lambda, alpha = 0.5),
+  function(coeff) MNL(coeff, alt_list, choice_list, lambda = results_cv$best_lambda, alpha = 0.5, 
+                       final_eval = FALSE, nrep = 6, intercept_index = 1),
   start = start.values,
   method = "BHHH",
   iterlim = 200,

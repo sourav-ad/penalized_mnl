@@ -20,6 +20,7 @@ install_if_missing(required_packages)
 
 #Source files
 source("functions/utility_functions.R")
+source("functions/utility_functions_generalized.R")
 source("functions/mnl_function.R")
 source("functions/pre_process.R")
 
@@ -137,7 +138,7 @@ run_elastic_net <- function(X, y, alpha = 0.5, n = 15){
 #Elastic net parameter tuning using BIC values
 
 lasso_lambda_bic <- function(lambda_grid, alt_matrices, df_long, n = 10, 
-                             threshold = 1e-4) {
+                             threshold = 1e-4, N) {
   best_lambda <- NULL
   best_BIC <- Inf
   best_res <- NULL
@@ -147,14 +148,15 @@ lasso_lambda_bic <- function(lambda_grid, alt_matrices, df_long, n = 10,
   alt3 <- alt_matrices$alt3
   
   lambda_results <- data.frame(lambda = lambda_grid, BIC = NA, LL = NA)
-  N <- nrow(df_long)
+  #N <- nrow(df_long)
   
   for (i in seq_along(lambda_grid)) {
     lambda <- lambda_grid[i]
     start.values <- rep(0, n)
     
     res <- maxBFGS(
-      function(coeff) MNL(coeff, alt1, alt2, alt3, lambda, alpha = 0.5, final_eval = FALSE),
+      function(coeff) MNL(coeff, alt_list, choice_list, lambda, alpha = 0.5, final_eval = FALSE,
+                          nrep = 6, intercept_index = 1),
       grad = NULL,
       hess = NULL,
       start = start.values,
@@ -168,11 +170,13 @@ lasso_lambda_bic <- function(lambda_grid, alt_matrices, df_long, n = 10,
       parscale = rep(1, length(start.values))
     )
     
-    invisible(MNL(res$estimate, alt1, alt2, alt3, lambda, alpha = 0.5, final_eval = TRUE))
+    invisible(MNL(res$estimate, alt_list, choice_list, lambda, alpha = 0.5, final_eval = FALSE,
+                  nrep = 6, intercept_index = 1))
     start.values <- coef(res)
     
     res <- maxLik(
-      function(coeff) MNL(coeff, alt1, alt2, alt3, lambda, alpha = 0.5, final_eval = TRUE),
+      function(coeff) MNL(coeff, alt_list, choice_list, lambda, alpha = 0.5, final_eval = FALSE,
+                          nrep = 6, intercept_index = 1),
       grad = NULL,
       hess = NULL,
       start = start.values,
@@ -186,7 +190,9 @@ lasso_lambda_bic <- function(lambda_grid, alt_matrices, df_long, n = 10,
       finalHessian = TRUE
     )
     
-    LL_unpenalized <- sum(MNL(res$estimate, alt1, alt2, alt3, lambda = 0, alpha = 0.5, final_eval = FALSE))
+    #unpenalized
+    LL_unpenalized <- sum(MNL_unpenalized(res$estimate, alt_list, choice_list, final_eval = FALSE,
+                                          nrep = 6))
     lambda_results$LL[i] <- LL_unpenalized
     
     active_coeffs <- coef(res)[abs(coef(res)) >= threshold]
@@ -208,7 +214,9 @@ lasso_lambda_bic <- function(lambda_grid, alt_matrices, df_long, n = 10,
   
   #lambda_results$k[i] <- k
   
-  LL_unpenalized_best <- sum(MNL(best_res$estimate, alt1, alt2, alt3, lambda = 0, alpha = 0.5, final_eval = FALSE))
+  #unpenalized
+  LL_unpenalized_best <- sum(MNL_unpenalized(best_res$estimate, alt_list, choice_list, final_eval = FALSE,
+                                             nrep = 6))
   
   cat("\n====Lambda tuning(BIC)====\n")
   print(lambda_results)
@@ -250,8 +258,8 @@ tune_lambda_cv <- function(df_demo, selected_features, lambda_grid, n_alt = 3, n
       train_df <- df_demo[df_demo$id %in% train_ids, ]
       test_df <- df_demo[df_demo$id %in% test_ids, ]
       
-      alt_train <- create_alt_matrices(train_df, selected_features, demographic_vars)
-      alt_test  <- create_alt_matrices(test_df, selected_features, demographic_vars)
+      alt_train <- create_alt_matrices2(train_df, selected_features, demographic_vars, n_alt = 3)
+      alt_test  <- create_alt_matrices2(test_df, selected_features, demographic_vars, n_alt = 3)
       
       alt_list_train <- lapply(1:n_alt, function(j) alt_train[[j]])
       alt_list_test  <- lapply(1:n_alt, function(j) alt_test[[j]])
@@ -262,7 +270,8 @@ tune_lambda_cv <- function(df_demo, selected_features, lambda_grid, n_alt = 3, n
       start.values <- rep(0, n)
       
       res <- maxBFGS(
-        function(coeff) MNL_cv(coeff, alt_list_train, choice_list_train, lambda, alpha = 0.5, final_eval = FALSE),
+        function(coeff) MNL(coeff, alt_list_train, choice_list_train, lambda, alpha = 0.5, final_eval = FALSE,
+                             nrep = 6, intercept_index = 1),
         start = start.values,
         print.level = 0,
         iterlim = 200,
@@ -270,7 +279,9 @@ tune_lambda_cv <- function(df_demo, selected_features, lambda_grid, n_alt = 3, n
       )
       
       # Evaluate unpenalized LL on test data
-      ll_out_sample <- MNL_cv(res$estimate, alt_list_test, choice_list_test, lambda = 0, alpha = 0.5)
+      #ll_out_sample <- MNL_cv(res$estimate, alt_list_test, choice_list_test, lambda = 0, alpha = 0.5)
+      ll_out_sample <- MNL_unpenalized(res$estimate, alt_list_test, choice_list_test, final_eval = FALSE,
+                                       nrep = 6)
       fold_lls[fold] <- sum(ll_out_sample)
     }
     

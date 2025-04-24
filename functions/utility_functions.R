@@ -1,20 +1,11 @@
 # Function to dynamically create alternative-specific variables with interactions
-
-
 #To handle e.g like cost_spec10
 #it will find cost, spec10 and multiply cost*spec10 for alt1, alt2, alt3
+
 create_alt_matrices <- function(df, selected_features, demographic_vars) {
   alt1_list <- list()
   alt2_list <- list()
   alt3_list <- list()
-
-  #Variables that do not need a suffix i.e are constant for a respondent
-  #Change as per requirement
-  #demographic_vars <- c('male', 'edu', 'job', 'age', 'q227', 'q229') #reduced Dogger bank data
-
-  # demographic_vars <- c('male', 'edu', 'job', 'age', 'q227', 'q229', 'q1', 'q2',
-  #                     'q6', 'q7', 'q10', 'job1', 'job2', 'job3', 'job4',
-  #                     'job5', 'job6', 'job7', 'job8') #full Dogger bank data
 
   for (feature in selected_features) {
     if (grepl("_", feature)) {  # Detect interaction terms by looking for "_"
