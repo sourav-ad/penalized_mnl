@@ -31,14 +31,14 @@ output <- data_wide_to_long(data, n_alt = 3)
 df_demo <- output$df_demo
 df_long <- output$df_long 
 
-constant_vars <- c('cost', 'spec10', 'spec25', 'prot25', 'prot50', 'invasive')
+choice_vars <- c('cost', 'spec10', 'spec25', 'prot25', 'prot50', 'invasive')
 
-changing_vars <- c('male', 'edu', 'job', 'age', 'q227', 'q229', 'q1', 'q2',
+demographic_vars <- c('male', 'edu', 'job', 'age', 'q227', 'q229', 'q1', 'q2',
                    'q6', 'q7', 'q10', 'job1', 'job2', 'job3', 'job4',
                    'job5', 'job6', 'job7', 'job8')
 
 
-final_df_scaled <- create_interaction_features(df_long, constant_vars, changing_vars)
+final_df_scaled <- create_interaction_features(df_long, choice_vars, demographic_vars)
 
 # X <- as.matrix(final_df_scaled)
 # y <- as.numeric(df_long$chosen)
@@ -47,11 +47,11 @@ final_df_scaled <- create_interaction_features(df_long, constant_vars, changing_
 #selected_features <- run_elastic_net(X, y, alpha = 0.5, n = top_n)
 # so I think the ultimate goal would be to replace glment with our own L1/L2 routine and we are that close !!
 
-num_covariates <- 15
+num_covariates <- 10
 selected_features <- colnames(final_df_scaled)[1:num_covariates]
 
 
-alt_matrices <- create_alt_matrices(df_demo, selected_features)
+alt_matrices <- create_alt_matrices(df_demo, selected_features, demographic_vars)
 
 #utility function matrices
 alt1 <- alt_matrices$alt1

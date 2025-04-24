@@ -74,9 +74,9 @@ data_wide_to_long <- function(data, n_alt = 3){
 
 #Managing covariate interactions
 
-create_interaction_features <- function(df_long, constant_vars, changing_vars){
-  df_interactions <- df_long[, constant_vars]
-  df_interactions_with <- df_long[, changing_vars]
+create_interaction_features <- function(df_long, choice_vars, demographic_vars){
+  df_interactions <- df_long[, choice_vars]
+  df_interactions_with <- df_long[, demographic_vars]
   interaction_df <- data.frame(matrix(nrow = nrow(df_interactions), ncol = 0))
   
   for (col1 in colnames(df_interactions)) {
@@ -191,6 +191,8 @@ lasso_lambda_bic <- function(lambda_grid, alt_matrices, df_long, n = 10,
     
     active_coeffs <- coef(res)[abs(coef(res)) >= threshold]
     k <- length(active_coeffs)
+    lambda_results$k[i] <- k
+    
     BIC_lasso <- -2 * LL_unpenalized + k * log(N)
     lambda_results$BIC[i] <- BIC_lasso
     
@@ -204,7 +206,7 @@ lasso_lambda_bic <- function(lambda_grid, alt_matrices, df_long, n = 10,
   # cat("\n====Log-Likelihoods and BIC by Lambda(L1)====\n")
   # print(lambda_results)
   
-  lambda_results$k[i] <- k
+  #lambda_results$k[i] <- k
   
   LL_unpenalized_best <- sum(MNL(best_res$estimate, alt1, alt2, alt3, lambda = 0, alpha = 0.5, final_eval = FALSE))
   
@@ -248,8 +250,8 @@ tune_lambda_cv <- function(df_demo, selected_features, lambda_grid, n_alt = 3, n
       train_df <- df_demo[df_demo$id %in% train_ids, ]
       test_df <- df_demo[df_demo$id %in% test_ids, ]
       
-      alt_train <- create_alt_matrices(train_df, selected_features)
-      alt_test  <- create_alt_matrices(test_df, selected_features)
+      alt_train <- create_alt_matrices(train_df, selected_features, demographic_vars)
+      alt_test  <- create_alt_matrices(test_df, selected_features, demographic_vars)
       
       alt_list_train <- lapply(1:n_alt, function(j) alt_train[[j]])
       alt_list_test  <- lapply(1:n_alt, function(j) alt_test[[j]])
@@ -297,6 +299,12 @@ summary_table_mnl <- function(model, selected_features, threshold = 1e-3){
   coef_df <- as.data.frame(summary_res$estimate)
   coef_df$Feature <- rownames(coef_df)
   colnames(coef_df) <- c("Estimate", "Std.Error", "t.value", "p.value", "Feature")
+  
+  coef_df$Estimate   <- round(coef_df$Estimate, 4)
+  coef_df$Std.Error  <- round(coef_df$Std.Error, 4)
+  coef_df$t.value    <- round(coef_df$t.value, 3)
+  coef_df$p.value    <- signif(coef_df$p.value, 3)
+  
   coef_df$Signif <- symnum(coef_df$p.value, corr = FALSE, na = FALSE,
                            cutpoints = c(0, 0.001, 0.01, 0.05, 0.1, 1),
                            symbols = c("***", "**", "*", ".", " "))

@@ -3,11 +3,9 @@
 #Generalized code for any number of utility function is provided below
 
 #Used in colprods()
-nrep <- 6
 
-intercept_index <- 1
-
-MNL <- function(coeff, alt1, alt2, alt3, lambda, alpha = 0.5, final_eval = FALSE) {
+MNL <- function(coeff, alt1, alt2, alt3, lambda, alpha = 0.5, final_eval = FALSE,
+                nrep = 6, intercept_index = 1) {
 
   # util1 = (alt1 %*% coeff[1:n])
   # util2 = (alt2 %*% coeff[1:n])
@@ -50,12 +48,9 @@ MNL <- function(coeff, alt1, alt2, alt3, lambda, alpha = 0.5, final_eval = FALSE
 }
 
 
-
-nrep <- 6
-intercept_index<- 1
-
 #Generalized function
-MNL_cv <- function(coeff, alt_list, choice_list, lambda, alpha = 0.5, final_eval = FALSE) {
+MNL_cv <- function(coeff, alt_list, choice_list, lambda, alpha = 0.5, final_eval = FALSE,
+                   nrep = 6, intercept_index = 1) {
   n_alt <- length(alt_list)  # Number of alternatives
   
   # Compute utilities for each alternative
