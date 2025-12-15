@@ -47,13 +47,14 @@ data_wide_to_long <- function(data, n_alt = 3){
                       'invasive1', 'cost1', 'spec101', 'spec251', 'prot251', 'prot501',
                       'invasive2','cost2', 'spec102', 'spec252', 'prot252', 'prot502',
                       'invasive3', 'cost3', 'spec103', 'spec253', 'prot253', 'prot503', 'q227', 'q229',
-                      'edu', 'male', 'job', 'age', 'choice', 'y1', 'y2', 'y3',
-                      'choice1', 'choice2', 'choice3', 'job1', 'job2', 
-                      'job3', 'job4', 'job5', 'job6', 'job7', 'job8', 'q1', 'q2', 'q6', 'q7', 'q10')]
+                      'edu', 'male', 'job', 'age', 'choice', 'income', 'y1', 'y2', 'y3',
+                      'choice1', 'choice2', 'choice3', 'ASC21', 'ASC22', 'ASC23', 'ASC31',
+                      'ASC32', 'ASC33', 'job1', 'job2', 'job3', 'job4', 'job5', 'job6', 'job7', 'job8', 'q1', 
+                      'q2', 'q6', 'q7', 'q10', 'child')]
   # Convert wide data format to long
   df_long <- df_demo %>%
     pivot_longer(
-      cols = starts_with('cost')|starts_with('spec10')|starts_with('spec25')|starts_with('prot25')|starts_with('prot50')|starts_with('invasive')|starts_with('protest'),
+      cols = starts_with('cost')|starts_with('spec10')|starts_with('spec25')|starts_with('prot25')|starts_with('prot50')|starts_with('invasive')|starts_with('ASC2')|starts_with('ASC3')|starts_with('protest'),
       names_to = c(".value", "choice_option"),
       names_pattern = "(.*)([1-3])"
     ) %>%
@@ -71,7 +72,7 @@ data_wide_to_long <- function(data, n_alt = 3){
   
   return(list(df_demo = df_demo, df_long = df_long))
 }
-
+ 
 
 #Managing covariate interactions
 
@@ -304,7 +305,7 @@ tune_lambda_cv <- function(df_demo, selected_features, lambda_grid, n_alt = 3, n
 
 #Print a final summary table with detailed information about the covariates
 
-summary_table_mnl <- function(model, selected_features, threshold = 1e-3){
+summary_table_mnl <- function(model, selected_features, threshold = 1e-2){
   names(model$estimate) <- selected_features
   summary_res <- summary(model)
   coef_df <- as.data.frame(summary_res$estimate)
@@ -417,21 +418,110 @@ lasso_lambda_bic_parallel <- function(lambda_grid, alt_list, choice_list, n = 10
 
 #Tune using CV
 
-tune_lambda_cv_parallel <- function(df_demo, selected_features, lambda_grid,
-                                    demographic_vars, n_alt = 3, n = 10, n_folds = 5) {
+# tune_lambda_cv_parallel <- function(df_demo, 
+#                                     selected_features, 
+#                                     lambda_grid = NULL,
+#                                     demographic_vars,
+#                                     n_alt = 3, 
+#                                     n = 10, 
+#                                     n_folds = 5,
+#                                     n_lambda = 30,
+#                                     lambda_min = 1e-4,
+#                                     lambda_max = 1,
+#                                     patience = 3) {
+#   library(future.apply)
+#   
+#   if (is.null(lambda_grid)) {
+#     lambda_grid <- exp(seq(log(lambda_min), log(lambda_max), length.out = n_lambda))
+#   }
+#   
+#   # Create folds (respondent-wise split)
+#   set.seed(123)
+#   id_list <- unique(df_demo$id)
+#   folds <- cut(seq_along(id_list), breaks = n_folds, labels = FALSE)
+#   id_folds <- split(id_list, folds)
+#   
+#   # Parallelized outer loop
+#   lambda_results_list <- future_lapply(lambda_grid, function(lambda) {
+#     
+#     cat("Running lambda =", lambda, "on PID", Sys.getpid(), "\n")
+#     
+#     fold_lls <- numeric(n_folds)
+#     
+#     for (fold in 1:n_folds) {
+#       test_ids <- id_folds[[fold]]
+#       train_ids <- setdiff(id_list, test_ids)
+#       
+#       train_df <- df_demo[df_demo$id %in% train_ids, ]
+#       test_df <- df_demo[df_demo$id %in% test_ids, ]
+#       
+#       alt_train <- create_alt_matrices2(train_df, selected_features, demographic_vars, n_alt)
+#       alt_test  <- create_alt_matrices2(test_df, selected_features, demographic_vars, n_alt)
+#       
+#       alt_list_train <- lapply(1:n_alt, function(j) alt_train[[j]])
+#       alt_list_test  <- lapply(1:n_alt, function(j) alt_test[[j]])
+#       
+#       choice_list_train <- lapply(1:n_alt, function(j) train_df[[paste0("choice", j)]])
+#       choice_list_test  <- lapply(1:n_alt, function(j) test_df[[paste0("choice", j)]])
+#       
+#       start.values <- rep(0, n)
+#       
+#       res <- maxBFGS(
+#         function(coeff) MNL(coeff, alt_list_train, choice_list_train, lambda, alpha = 0.5, final_eval = FALSE,
+#                             nrep = 6, intercept_index = 1),
+#         start = start.values,
+#         print.level = 0,
+#         iterlim = 200,
+#         finalHessian = FALSE
+#       )
+#       
+#       ll_out_sample <- MNL_unpenalized(res$estimate, alt_list_test, choice_list_test, final_eval = FALSE,
+#                                        nrep = 6)
+#       fold_lls[fold] <- sum(ll_out_sample)
+#     }
+#     
+#     mean_LL <- mean(fold_lls)
+#     return(data.frame(lambda = lambda, mean_LL = mean_LL))
+#   })
+#   
+#   # Combine results
+#   lambda_results <- do.call(rbind, lambda_results_list)
+#   
+#   best_idx <- which.max(lambda_results$mean_LL)
+#   best_lambda <- lambda_results$lambda[best_idx]
+#   best_LL <- lambda_results$mean_LL[best_idx]
+#   
+#   cat("\n===== Lambda tuning summary (CV, Parallel) =====\n")
+#   print(lambda_results)
+#   cat("\nBest lambda based on mean out-of-sample LL:", best_lambda, "\n")
+#   
+#   return(list(best_lambda = best_lambda, lambda_results = lambda_results))
+# }
+
+
+tune_lambda_cv_parallel <- function(df_demo, selected_features, lambda_grid = NULL,
+                                    demographic_vars, n_alt = 3, n = 10, n_folds = 5,
+                                    n_lambda = 30, lambda_min = 1e-4, lambda_max = 1,
+                                    patience = 3 #after how many log LL reduction should iterations stop
+                                    ) {
   library(future.apply)
   
-  # Create folds (respondent-wise split)
+  # --- Log-spaced λ grid if not provided ---
+  if (is.null(lambda_grid)) {
+    lambda_grid <- exp(seq(log(lambda_min), log(lambda_max), length.out = n_lambda))
+  }
+  
+  # Create folds
   set.seed(123)
   id_list <- unique(df_demo$id)
   folds <- cut(seq_along(id_list), breaks = n_folds, labels = FALSE)
   id_folds <- split(id_list, folds)
   
-  # Parallelized outer loop
-  lambda_results_list <- future_lapply(lambda_grid, function(lambda) {
-    
-    cat("Running lambda =", lambda, "on PID", Sys.getpid(), "\n")
-    
+  results <- data.frame(lambda = numeric(0), mean_LL = numeric(0))
+  best_LL <- -Inf
+  no_improve_count <- 0
+  
+  for (lambda in lambda_grid) {
     fold_lls <- numeric(n_folds)
     
     for (fold in 1:n_folds) {
@@ -439,10 +529,10 @@ tune_lambda_cv_parallel <- function(df_demo, selected_features, lambda_grid,
       train_ids <- setdiff(id_list, test_ids)
       
       train_df <- df_demo[df_demo$id %in% train_ids, ]
-      test_df <- df_demo[df_demo$id %in% test_ids, ]
+      test_df  <- df_demo[df_demo$id %in% test_ids, ]
       
       alt_train <- create_alt_matrices2(train_df, selected_features, demographic_vars, n_alt)
-      alt_test  <- create_alt_matrices2(test_df, selected_features, demographic_vars, n_alt)
+      alt_test  <- create_alt_matrices2(test_df,  selected_features, demographic_vars, n_alt)
       
       alt_list_train <- lapply(1:n_alt, function(j) alt_train[[j]])
       alt_list_test  <- lapply(1:n_alt, function(j) alt_test[[j]])
@@ -451,35 +541,43 @@ tune_lambda_cv_parallel <- function(df_demo, selected_features, lambda_grid,
       choice_list_test  <- lapply(1:n_alt, function(j) test_df[[paste0("choice", j)]])
       
       start.values <- rep(0, n)
-      
       res <- maxBFGS(
-        function(coeff) MNL(coeff, alt_list_train, choice_list_train, lambda, alpha = 0.5, final_eval = FALSE,
-                            nrep = 6, intercept_index = 1),
+        function(coeff) MNL(coeff, alt_list_train, choice_list_train, lambda, alpha = 0.5,
+                            final_eval = FALSE, nrep = 6, intercept_index = 1),
         start = start.values,
         print.level = 0,
         iterlim = 200,
         finalHessian = FALSE
       )
       
-      ll_out_sample <- MNL_unpenalized(res$estimate, alt_list_test, choice_list_test, final_eval = FALSE,
-                                       nrep = 6)
+      ll_out_sample <- MNL_unpenalized(res$estimate, alt_list_test, choice_list_test, 
+                                       final_eval = FALSE, nrep = 6)
       fold_lls[fold] <- sum(ll_out_sample)
     }
     
     mean_LL <- mean(fold_lls)
-    return(data.frame(lambda = lambda, mean_LL = mean_LL))
-  })
+    results <- rbind(results, data.frame(lambda = lambda, mean_LL = mean_LL))
+    
+    # Early stopping check
+    if (mean_LL > best_LL) {
+      best_LL <- mean_LL
+      no_improve_count <- 0
+    } else {
+      no_improve_count <- no_improve_count + 1
+    }
+    
+    if (no_improve_count >= patience) {
+      message("Early stopping at λ = ", lambda, " after ", patience, " declines.")
+      break
+    }
+  }
   
-  # Combine results
-  lambda_results <- do.call(rbind, lambda_results_list)
+  best_idx <- which.max(results$mean_LL)
+  best_lambda <- results$lambda[best_idx]
   
-  best_idx <- which.max(lambda_results$mean_LL)
-  best_lambda <- lambda_results$lambda[best_idx]
-  best_LL <- lambda_results$mean_LL[best_idx]
-  
-  cat("\n===== Lambda tuning summary (CV, Parallel) =====\n")
-  print(lambda_results)
+  cat("\n===== Lambda tuning summary (CV + Log Grid + Early Stopping) =====\n")
+  print(results)
   cat("\nBest lambda based on mean out-of-sample LL:", best_lambda, "\n")
   
-  return(list(best_lambda = best_lambda, lambda_results = lambda_results))
+  return(list(best_lambda = best_lambda, lambda_results = results))
 }

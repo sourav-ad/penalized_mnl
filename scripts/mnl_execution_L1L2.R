@@ -1,7 +1,7 @@
 #Libraries
 
 required_packages <- c("maxLik", "matrixStats", "tidyr", "dplyr", "glmnet", "bgw", 
-                       "Rfast", "future.apply", "future")
+                       "Rfast", "future.apply", "future", "ggplot2")
 
 install_if_missing <- function(packages) {
   missing_packages <- packages[!(packages %in% installed.packages()[, "Package"])]
@@ -25,6 +25,14 @@ source("functions/MNL_functions_execution.R")
 
 #Data
 data <- read.csv("data/doggerbank_full_973_wide.csv")
+#Alternative
+#alternate specific constant for choices 2 and 3
+data$ASC21 <- 0
+data$ASC22 <- 1
+data$ASC23 <- 0
+data$ASC31 <- 0
+data$ASC32 <- 0
+data$ASC33 <- 1
 
 #Implement functions
 
@@ -32,7 +40,7 @@ output <- data_wide_to_long(data, n_alt = 3)
 df_demo <- output$df_demo
 df_long <- output$df_long 
 
-choice_vars <- c('cost', 'spec10', 'spec25', 'prot25', 'prot50', 'invasive')
+choice_vars <- c('ASC2', 'ASC3', 'cost', 'spec10', 'spec25', 'prot25', 'prot50', 'invasive')
 
 demographic_vars <- c('male', 'edu', 'job', 'age', 'q227', 'q229', 'q1', 'q2',
                    'q6', 'q7', 'q10', 'job1', 'job2', 'job3', 'job4',
@@ -40,6 +48,8 @@ demographic_vars <- c('male', 'edu', 'job', 'age', 'q227', 'q229', 'q1', 'q2',
 
 
 final_df_scaled <- create_interaction_features(df_long, choice_vars, demographic_vars)
+#Uncomment to consider ONLY interactions
+#final_df_scaled <- final_df_scaled[, grepl("_", colnames(final_df_scaled))]
 
 # X <- as.matrix(final_df_scaled)
 # y <- as.numeric(df_long$chosen)
@@ -48,8 +58,14 @@ final_df_scaled <- create_interaction_features(df_long, choice_vars, demographic
 #selected_features <- run_elastic_net(X, y, alpha = 0.5, n = top_n)
 # so I think the ultimate goal would be to replace glment with our own L1/L2 routine and we are that close !!
 
-num_covariates <- 25
+#ncol(final_df_scaled) gives the maximum number of possible attributes
+#marginal + interactions
+num_covariates <- 20
 selected_features <- colnames(final_df_scaled)[1:num_covariates]
+
+#to use all the covariates
+# selected_features <- colnames(final_df_scaled)
+# num_covariates <- length(selected_features)
 
 
 alt_matrices <- create_alt_matrices2(df_demo, 
@@ -72,7 +88,7 @@ plan(multisession)
 options(future.rng.onMisuse = "ignore")
 
 #Adjust grid as needed
-lambda_grid <- seq(0.001, 0.01, 0.001)
+lambda_grid <- seq(0.005, 0.03, 0.005)
 N <- nrow(df_long)
 
 ##Sequential
@@ -98,9 +114,29 @@ results <- lasso_lambda_bic_parallel(
 lambda_results <- results$lambda_results
 
 # Plot BIC values
-plot(lambda_results$lambda, lambda_results$BIC, type = "b", col = "blue",
-     xlab = "L1 lambda)", ylab = "BIC",
-     main = "Lasso parameter with BIC")
+plot_bic <- ggplot(lambda_results, aes(x = lambda, y = BIC)) +
+  geom_line(size = 1.5, colour = "grey") +
+  geom_point(size = 3) +
+  theme_bw(base_size = 16) +
+  theme(
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    axis.line = element_line(colour = "black"),
+    text = element_text(family = "Helvetica"),
+    axis.text = element_text(size = 18),
+    axis.title = element_text(size = 26)
+  ) +
+  labs(
+    x = "Lambda",
+    y = "BIC"
+    #title = "BIC vs Lambda (Elastic Net Regularization)"
+  )
+
+# Save
+#ggsave("bic_vs_lambda.pdf", plot_bic, width = 7, height = 5, dpi = 300)
+ggsave("plots/bic_vs_lambda.png", plot_bic, width = 10, height = 7, dpi = 400)
+
+
 
 # legend("topleft", legend = c("BIC", "Non zero coeff"),
 #        col = c("blue", "red"), lty = 1, bty = "n")
@@ -130,10 +166,27 @@ lambda_results_cv <- results_cv$lambda_results
 
 #Plot mean LL
 
-plot(lambda_results_cv$lambda, lambda_results_cv$mean_LL,
-     type = "b", xlab = "Lambda",
-     ylab = "Mean Out-of-Sample Log-Likelihood",
-     main = "CV Log-Likelihood vs Lambda")
+plot_cv <-ggplot(lambda_results_cv, aes(x = lambda, y = mean_LL)) +
+  geom_line(size = 1.5, colour = "grey") +
+  geom_point(size = 3) +
+  theme_bw(base_size = 16) +
+  theme(
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    axis.line = element_line(colour = "black"),
+    text = element_text(family = "Helvetica"),
+    axis.text = element_text(size = 18),
+    axis.title = element_text(size = 26)
+  ) +
+  labs(
+    x = "Lambda",
+    y = "Mean Out-of-Sample LL"
+    #title = "Cross-Validated Log-Likelihood vs Lambda"
+  )
+
+# Save
+#ggsave("plots/cv_ll_vs_lambda.pdf", plot_cv, width = 7, height = 5, dpi = 300)
+ggsave("plots/cv_ll_vs_lambda.png", plot_cv, width = 10, height = 7, dpi = 400)
 
 
 
