@@ -27,7 +27,8 @@ source("functions/MNL_functions_execution.R")
 #Function
 force_feature_interaction <- function(n_persons = 400,
                            #num_covariates = 24,
-                           lambda_grid = seq(0.001, 0.01, 0.001),
+                           #lambda_grid = seq(0.001, 0.01, 0.001),
+                           lambda_grid = exp(seq(log(1e-4), log(3e-2), length.out = 20)),
                            iterations = 5) {
   
   # data
@@ -38,7 +39,11 @@ force_feature_interaction <- function(n_persons = 400,
   # alternatives
   data$ASC21 <- 0; data$ASC22 <- 1; data$ASC23 <- 0
   data$ASC31 <- 0; data$ASC32 <- 0; data$ASC33 <- 1
+  #scaling
   data$income <- data$income/10000
+  data$age <- data$age/100
+  data$cost2 <- data$cost2/100
+  data$cost3 <- data$cost3/100
   
   alt1 = cbind(0, 0, data$spec101, data$spec251, data$prot251, data$prot501, data$invasive1, data$cost1,
                  data$ASC21 * data$male, data$ASC31 * data$age, data$cost1 * data$income,
@@ -339,7 +344,7 @@ force_feature_interaction <- function(n_persons = 400,
 #                           #lambda_grid = seq(0.001, 0.02, 0.001),
 #                           iterations = 2)
 
-for (i in c(500, 600, 700, 800, 900, 973)) {
+for (i in c(50, 100, 250, 500, 973)) {
   force_feature_interaction(
     n_persons = i,
     iterations = 250

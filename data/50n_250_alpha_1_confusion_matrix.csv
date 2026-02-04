@@ -1,0 +1,5 @@
+"Alpha","TrueStatus","Predicted","Count"
+1,"Induced","Detected",346
+1,"Induced","Not Detected",404
+1,"Not Induced","Detected",4
+1,"Not Induced","Not Detected",746

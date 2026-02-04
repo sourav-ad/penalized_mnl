@@ -204,8 +204,9 @@ ggsave("plots/cv_ll_vs_lambda.png", plot_cv, width = 10, height = 7, dpi = 400)
 start.values <- rep(0, length(selected_features))
 
 final_model <- maxLik(
-  function(coeff) MNL(coeff, alt_list, choice_list, lambda = results_cv$best_lambda, alpha = 0.5, 
-                       final_eval = FALSE, nrep = 6, intercept_index = 1),
+  function(coeff) MNL(coeff, alt_list, choice_list, lambda = results_cv$best_lambda, 
+                      alpha = 0.5,
+                      final_eval = FALSE, nrep = 6, intercept_index = 1),
   start = start.values,
   method = "BHHH",
   iterlim = 200,

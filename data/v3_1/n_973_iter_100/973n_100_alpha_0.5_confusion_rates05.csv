@@ -1,0 +1,2 @@
+"Alpha","Threshold","TP","FN","FP","TN","TPR","FPR","TNR","FNR","OneMinusFPR"
+0.5,0.1,953,47,205,795,0.953,0.205,0.795,0.047,0.795

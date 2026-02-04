@@ -1,0 +1,5 @@
+"TrueStatus","Predicted","Count"
+"Induced","Detected",101
+"Induced","Not Detected",649
+"Not Induced","Detected",3
+"Not Induced","Not Detected",747

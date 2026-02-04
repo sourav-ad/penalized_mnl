@@ -1,0 +1,25 @@
+"Alpha","Threshold","TrueStatus","Predicted","Count"
+0.5,1e-04,"Induced","Detected",982
+0.5,1e-04,"Induced","Not Detected",18
+0.5,1e-04,"Not Induced","Detected",950
+0.5,1e-04,"Not Induced","Not Detected",50
+0.5,0.001,"Induced","Detected",957
+0.5,0.001,"Induced","Not Detected",43
+0.5,0.001,"Not Induced","Detected",884
+0.5,0.001,"Not Induced","Not Detected",116
+0.5,0.01,"Induced","Detected",914
+0.5,0.01,"Induced","Not Detected",86
+0.5,0.01,"Not Induced","Detected",798
+0.5,0.01,"Not Induced","Not Detected",202
+0.5,0.05,"Induced","Detected",859
+0.5,0.05,"Induced","Not Detected",141
+0.5,0.05,"Not Induced","Detected",684
+0.5,0.05,"Not Induced","Not Detected",316
+0.5,0.1,"Induced","Detected",813
+0.5,0.1,"Induced","Not Detected",187
+0.5,0.1,"Not Induced","Detected",570
+0.5,0.1,"Not Induced","Not Detected",430
+0.5,0.5,"Induced","Detected",478
+0.5,0.5,"Induced","Not Detected",522
+0.5,0.5,"Not Induced","Detected",79
+0.5,0.5,"Not Induced","Not Detected",921

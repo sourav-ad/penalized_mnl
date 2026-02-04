@@ -305,7 +305,7 @@ tune_lambda_cv <- function(df_demo, selected_features, lambda_grid, n_alt = 3, n
 
 #Print a final summary table with detailed information about the covariates
 
-summary_table_mnl <- function(model, selected_features, threshold = 1e-2){
+summary_table_mnl <- function(model, selected_features, threshold = 1e-3){
   names(model$estimate) <- selected_features
   summary_res <- summary(model)
   coef_df <- as.data.frame(summary_res$estimate)
@@ -317,12 +317,8 @@ summary_table_mnl <- function(model, selected_features, threshold = 1e-2){
   coef_df$t.value    <- round(coef_df$t.value, 3)
   coef_df$p.value    <- signif(coef_df$p.value, 3)
   
-  coef_df$Signif <- symnum(coef_df$p.value, corr = FALSE, na = FALSE,
-                           cutpoints = c(0, 0.001, 0.01, 0.05, 0.1, 1),
-                           symbols = c("***", "**", "*", ".", " "))
-  threshold <- 1e-3
   coef_df$Shrunk <- ifelse(abs(coef_df$Estimate) < threshold, "Yes", "No")
-  final_table <- coef_df[, c("Feature", "Estimate", "Std.Error", "t.value", "p.value", "Signif", "Shrunk")]
+  final_table <- coef_df[, c("Feature", "Estimate", "Std.Error", "t.value", "p.value", "Shrunk")]
   final_table <- final_table[order(-abs(final_table$Estimate)), ]
   print(final_table, row.names = FALSE)
   return(final_table)
@@ -499,10 +495,13 @@ lasso_lambda_bic_parallel <- function(lambda_grid, alt_list, choice_list, n = 10
 # }
 
 
-tune_lambda_cv_parallel <- function(df_demo, selected_features, lambda_grid = NULL,
+tune_lambda_cv_parallel <- function(df_demo, 
+                                    selected_features, 
+                                    lambda_grid = NULL,
                                     demographic_vars, n_alt = 3, n = 10, n_folds = 5,
                                     n_lambda = 30, lambda_min = 1e-4, lambda_max = 1,
-                                    patience = 3 #after how many log LL reduction should iterations stop
+                                    patience = 3, #after how many log LL reduction should iterations stop
+                                    alpha = 1
                                     ) {
   library(future.apply)
   
@@ -542,7 +541,10 @@ tune_lambda_cv_parallel <- function(df_demo, selected_features, lambda_grid = NU
       
       start.values <- rep(0, n)
       res <- maxBFGS(
-        function(coeff) MNL(coeff, alt_list_train, choice_list_train, lambda, alpha = 0.5,
+        function(coeff) MNL(coeff, alt_list_train, choice_list_train, 
+                            lambda, 
+                            #alpha = 0.5,
+                            alpha,
                             final_eval = FALSE, nrep = 6, intercept_index = 1),
         start = start.values,
         print.level = 0,
@@ -567,7 +569,7 @@ tune_lambda_cv_parallel <- function(df_demo, selected_features, lambda_grid = NU
     }
     
     if (no_improve_count >= patience) {
-      message("Early stopping at λ = ", lambda, " after ", patience, " declines.")
+      message("Early stopping at lambda = ", lambda, " after ", patience, " declines.")
       break
     }
   }
@@ -580,4 +582,133 @@ tune_lambda_cv_parallel <- function(df_demo, selected_features, lambda_grid = NU
   cat("\nBest lambda based on mean out-of-sample LL:", best_lambda, "\n")
   
   return(list(best_lambda = best_lambda, lambda_results = results))
+}
+
+
+
+
+####bespoke lambda tuning for semi synthetic data ONLY
+
+tune_lambda_cv_bespoke <- function(
+    alt_list,
+    choice_list,
+    lambda_grid,
+    person_id,
+    alpha = 1,
+    n_folds = 5,
+    start = NULL,
+    method = "BHHH",
+    th = NULL
+) {
+  
+  ## NOT for the df_demo pipeline
+  
+  #number of alternatives and observations
+  n_alt <- length(alt_list)
+  n_obs <- nrow(alt_list[[1]])
+  p     <- ncol(alt_list[[1]])
+  
+  #sanity checks
+  stopifnot(length(choice_list) == n_alt)
+  stopifnot(all(sapply(alt_list, nrow) == n_obs))
+  stopifnot(length(lambda_grid) > 1)
+  
+  #default starting values
+  if (is.null(start)) {
+    start <- rep(0, p)
+  }
+  
+  #CV folds with unique respondents in each fold, no leakage
+  
+  persons <- unique(person_id)
+  fold_id_person <- sample(
+    rep(seq_len(n_folds), length.out = length(persons))
+  )
+  names(fold_id_person) <- persons
+  
+  fold_id <- fold_id_person[as.character(person_id)]
+  
+  # build folds as row indices
+  folds <- split(seq_len(n_obs), fold_id)
+  
+  #CV scores
+  cv_ll <- numeric(length(lambda_grid))
+  
+  #loop over lambda values
+  for (l in seq_along(lambda_grid)) {
+    
+    lambda <- lambda_grid[l]
+    ll_fold <- numeric(n_folds)
+    
+    #loop over k folds
+  
+    for (k in seq_len(n_folds)) {
+      
+      idx_test  <- folds[[k]]
+      idx_train <- setdiff(seq_len(n_obs), idx_test)
+      
+      
+      alt_train <- lapply(alt_list, function(A)
+        A[idx_train, , drop = FALSE]
+      )
+      alt_test <- lapply(alt_list, function(A)
+        A[idx_test, , drop = FALSE]
+      )
+      
+      #split choices
+      choice_train <- lapply(choice_list, function(y)
+        y[idx_train]
+      )
+      choice_test <- lapply(choice_list, function(y)
+        y[idx_test]
+      )
+      
+      #fit penalized model
+      fit <- maxLik(
+        function(b) MNL(
+          b,
+          alt_train,
+          choice_train,
+          lambda = lambda,
+          alpha = alpha,
+          intercept_index = NULL
+        ),
+        start = start,
+        method = method,
+        finalHessian = FALSE
+      )
+      
+      #create a new object
+      b_hat <- coef(fit)
+      #threshold the coeff
+      if (!is.null(th)) {
+        b_hat <- b_hat * (abs(b_hat) >= th)
+      }
+      
+      #unpenalized log-likelihood on testing fold
+      ll_test <- MNL(
+        #coef(fit), 
+        b_hat, #pass thresholded coefficients
+        alt_test,
+        choice_test,
+        lambda = 0,          #no penalty on test data
+        alpha = alpha,
+        final_eval = TRUE
+      )
+      
+      #store sum log-likelihood 
+      ll_fold[k] <- sum(ll_test)
+    }
+    
+    # average CV log-likelihood across folds
+    cv_ll[l] <- mean(ll_fold)
+  }
+  
+  #return optimal lambda 
+ 
+  list(
+    best_lambda = lambda_grid[which.max(cv_ll)],
+    cv_ll       = cv_ll,
+    lambda_grid = lambda_grid
+  )
 }

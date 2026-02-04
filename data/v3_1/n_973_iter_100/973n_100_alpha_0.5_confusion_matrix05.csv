@@ -1,0 +1,5 @@
+"Alpha","Threshold","TrueStatus","Predicted","Count"
+0.5,0.1,"Induced","Detected",953
+0.5,0.1,"Induced","Not Detected",47
+0.5,0.1,"Not Induced","Detected",205
+0.5,0.1,"Not Induced","Not Detected",795
