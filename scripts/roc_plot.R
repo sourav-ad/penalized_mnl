@@ -1,11 +1,11 @@
-## TRUE ROC PIPELINE (penalized alpha=0.5,1 + unpenalized vanilla)
-## - Reads your *_interaction_detection_long.csv files
-## - Drops the redundant Threshold dimension (keeps one Estimate per iter×interaction)
+## ROC (penalized alpha=0.5,1 + unpenalized )
+## - Read your *_interaction_detection_long.csv files
+## - Drop the redundant Threshold dimension (keep one Estimate per iter×interaction)
 ## - Uses score = |Estimate|, label = 1{TrueBeta != 0}
-## - Computes ROC by sweeping all unique score cutpoints (pROC does this)
+## - Compute ROC by sweeping all unique score cutpoints (pROC)
 ## - Outputs: combined ROC plot + AUC table
 ##
-## Requirements: dplyr, ggplot2, pROC, readr (optional)
+## Requirements: dplyr, ggplot2, pROC
 
 suppressPackageStartupMessages({
   library(dplyr)
@@ -13,9 +13,7 @@ suppressPackageStartupMessages({
   library(pROC)
 })
 
-# -----------------------------
-# 0) Paths
-# -----------------------------
+
 n_val <- 973
 iterations <- 100
 
@@ -28,17 +26,16 @@ pen_files <- c(
 )
 
 # pick ONE vanilla run (change the filename to whichever exists)
-# Example placeholders; set this to your actual vanilla filename.
 van_file <- file.path(van_dir, paste0(n_val, "n_100_alpha_1_interaction_detection_long.csv"))
 
-# -----------------------------
-# 1) Read + normalize one long file to "base" rows
+
+# normalize one long file to "base" rows
 #    (one row per iteration × interaction)
-# -----------------------------
+
 read_long_to_base <- function(path, method_label) {
   df <- read.csv(path)
 
-  # Expected cols: Alpha, Threshold, Iteration, Interaction, TrueBeta, Estimate, Detected
+  #cols: Alpha, Threshold, Iteration, Interaction, TrueBeta, Estimate, Detected
   stopifnot(all(c("Iteration", "Interaction", "TrueBeta", "Estimate") %in% names(df)))
 
   base <- df %>%
@@ -57,34 +54,31 @@ read_long_to_base <- function(path, method_label) {
   base
 }
 
-# -----------------------------
-# 2) Build base data for penalized methods
-# -----------------------------
+
+#base data for penalized methods
+
 base_pen <- bind_rows(
   read_long_to_base(pen_files[["0.5"]], "Penalized (alpha=0.5)"),
   read_long_to_base(pen_files[["1"]],   "Penalized (alpha=1)")
 )
 
-# -----------------------------
-# 3) Build base data for vanilla method
-# -----------------------------
-# If your vanilla long file has no Alpha column, that's fine; we ignore it anyway.
+
+#base data for vanilla method
+
+#vanilla long file has no Alpha column
 base_van <- read_long_to_base(van_file, "Unpenalized (vanilla)")
 
 # Combine
 base_all <- bind_rows(base_pen, base_van)
 
 # Sanity checks
-# You want both classes present (active and inactive) for ROC.
 class_check <- base_all %>%
   group_by(Method) %>%
   summarise(n_active = sum(y == 1), n_inactive = sum(y == 0), .groups = "drop")
 print(class_check)
 
-# -----------------------------
-# 4) Compute TRUE ROC + AUC per Method
-#    (pROC sweeps all unique score cutpoints)
-# -----------------------------
+
+# ROC + AUC 
 roc_df <- base_all %>%
   group_by(Method) %>%
   group_modify(~{
@@ -109,16 +103,14 @@ auc_tab <- roc_df %>%
 
 print(auc_tab)
 
-# -----------------------------
-# 5) Plot combined TRUE ROC (step curves) + AUC in legend labels
-# -----------------------------
+
+#Plot
 auc_labels <- auc_tab %>%
   mutate(MethodLabel = paste0(Method, " | AUC=", sprintf("%.3f", AUC)))
 
 roc_plot_df <- roc_df %>%
   left_join(auc_labels %>% select(Method, MethodLabel), by = "Method")
 
-# Preserve ordering in legend: penalized then vanilla (or by AUC)
 roc_plot_df$MethodLabel <- factor(
   roc_plot_df$MethodLabel,
   levels = auc_labels$MethodLabel
