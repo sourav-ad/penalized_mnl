@@ -354,4 +354,3 @@ future_lapply(n_grid, function(n) {
 
 #shut down workers
 plan(sequential)
-

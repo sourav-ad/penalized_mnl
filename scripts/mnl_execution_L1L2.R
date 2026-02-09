@@ -23,6 +23,10 @@ source("functions/mnl_function.R")
 source("functions/pre_process.R")
 source("functions/MNL_functions_execution.R")
 
+#Thresholding
+#BHHH + L1/L2 cannot introduce exact sparsity 
+SCREENING_THRESHOLD <- 0.01
+
 #Data
 data <- read.csv("data/doggerbank_full_973_wide.csv")
 #Alternative
@@ -33,6 +37,11 @@ data$ASC23 <- 0
 data$ASC31 <- 0
 data$ASC32 <- 0
 data$ASC33 <- 1
+
+#scaling (can be implemented if needed)
+# data$income <- scale(data$income)
+# data$age <- scale(data$age)
+# data$cost <- scale(data$cost)
 
 #Implement functions
 
@@ -60,7 +69,7 @@ final_df_scaled <- create_interaction_features(df_long, choice_vars, demographic
 
 #ncol(final_df_scaled) gives the maximum number of possible attributes
 #marginal + interactions
-num_covariates <- 20
+num_covariates <- 25
 selected_features <- colnames(final_df_scaled)[1:num_covariates]
 
 #to use all the covariates
@@ -88,7 +97,8 @@ plan(multisession)
 options(future.rng.onMisuse = "ignore")
 
 #Adjust grid as needed
-lambda_grid <- seq(0.005, 0.03, 0.005)
+#lambda_grid <- seq(0.005, 0.03, 0.005)
+lambda_grid <- exp(seq(log(6e-4), log(3e-2), length.out = 10))
 N <- nrow(df_long)
 
 ##Sequential
@@ -107,7 +117,7 @@ results <- lasso_lambda_bic_parallel(
   alt_list,
   choice_list,
   n = num_covariates,
-  threshold = 1e-4,
+  threshold = SCREENING_THRESHOLD,
   N
 )
 
@@ -132,7 +142,7 @@ plot_bic <- ggplot(lambda_results, aes(x = lambda, y = BIC)) +
     #title = "BIC vs Lambda (Elastic Net Regularization)"
   )
 
-# Save
+# Save (comment/uncomment as needed)
 #ggsave("bic_vs_lambda.pdf", plot_bic, width = 7, height = 5, dpi = 300)
 ggsave("plots/bic_vs_lambda.png", plot_bic, width = 10, height = 7, dpi = 400)
 
@@ -184,7 +194,7 @@ plot_cv <-ggplot(lambda_results_cv, aes(x = lambda, y = mean_LL)) +
     #title = "Cross-Validated Log-Likelihood vs Lambda"
   )
 
-# Save
+# Save (comment/uncomment as needed)
 #ggsave("plots/cv_ll_vs_lambda.pdf", plot_cv, width = 7, height = 5, dpi = 300)
 ggsave("plots/cv_ll_vs_lambda.png", plot_cv, width = 10, height = 7, dpi = 400)
 

@@ -139,7 +139,8 @@ run_elastic_net <- function(X, y, alpha = 0.5, n = 15){
 #Elastic net parameter tuning using BIC values
 
 lasso_lambda_bic <- function(lambda_grid, alt_matrices, df_long, n = 10, 
-                             threshold = 1e-4, N) {
+                             threshold = SCREENING_THRESHOLD, N) {
+  stopifnot(!missing(threshold))
   best_lambda <- NULL
   best_BIC <- Inf
   best_res <- NULL
@@ -305,7 +306,8 @@ tune_lambda_cv <- function(df_demo, selected_features, lambda_grid, n_alt = 3, n
 
 #Print a final summary table with detailed information about the covariates
 
-summary_table_mnl <- function(model, selected_features, threshold = 1e-3){
+summary_table_mnl <- function(model, selected_features, threshold = SCREENING_THRESHOLD){
+  #stopifnot(!missing(threshold))
   names(model$estimate) <- selected_features
   summary_res <- summary(model)
   coef_df <- as.data.frame(summary_res$estimate)
@@ -329,7 +331,8 @@ summary_table_mnl <- function(model, selected_features, threshold = 1e-3){
 ##Parallelization function
 
 lasso_lambda_bic_parallel <- function(lambda_grid, alt_list, choice_list, n = 10, 
-                                      threshold = 1e-4, N, alpha = 0.5) {
+                                      threshold = SCREENING_THRESHOLD, N, alpha = 0.5) {
+  stopifnot(!missing(threshold))
   library(future.apply)
   
   # Make sure the plan is set before running this

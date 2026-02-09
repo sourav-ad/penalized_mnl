@@ -14,7 +14,7 @@ suppressPackageStartupMessages({
 })
 
 
-n_val <- 973
+n_val <- 250
 iterations <- 100
 
 pen_dir <- file.path("data", "v3", paste0("n_", n_val, "_iter_100"))
