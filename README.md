@@ -1,4 +1,4 @@
-## Aiding the Analysis of Systematic Preference Heterogeneity Using Scalable and Regularized Multinomial Logit Models
+# Aiding the Analysis of Systematic Preference Heterogeneity Using Scalable and Regularized Multinomial Logit Models
 
 This repository reproduces an end-to-end pipeline for estimating a multinomial logit (MNL) model with 
 elastic net regularization applied to the log-likelihood, with: 
@@ -12,13 +12,13 @@ preference heterogeneity
 
 (iv) parallel execution for scalability. 
 
-# Real Data (Dogger Bank)
+## Real Data (Dogger Bank)
 
 -  Penalized MNL estimates for a high-dimensional utility specification.
 -  $\lambda$ selection diagnostics: BIC($\lambda$) and CV out-of-sample log-likelihood($\lambda$).
 -  Coefficient table with shrinkage flags / threshold screening results.
 
-# Semi-synthetic data
+## Semi-synthetic data
 
 -  Controlled induction of interaction effects + recovery evaluation
 -  Distribution of $\lambda$ across iterations.
@@ -26,7 +26,7 @@ preference heterogeneity
 
 
 
-# Usage
+## Usage
 
 Please set working directory and file paths as needed. To run the script for real data and analysis, use:
 
