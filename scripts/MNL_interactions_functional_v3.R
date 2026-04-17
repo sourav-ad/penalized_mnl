@@ -1,3 +1,4 @@
+##Semi synthetic
 ##INDUCE AND TEST IF INTERACTIONS CAN BE RECOVERED
 #Libraries
 
@@ -8,7 +9,7 @@ install_if_missing <- function(packages) {
   missing_packages <- packages[!(packages %in% installed.packages()[, "Package"])]
 
   if(length(missing_packages) > 0) {
-    install.packages(missing_packages, dependencies = TRUE)  # Install missing packages
+    install.packages(missing_packages, dependencies = TRUE)  #Install missing packages
   }
 
   # Load all packages
@@ -29,12 +30,16 @@ force_feature_interaction <- function(
     n_persons = 400,
     lambda_grid = exp(seq(log(1e-4), log(5e-1), length.out = 10)),
     iterations = 5,
-    alpha_grid = c(0.5, 1)
+    alpha_grid = c(0.5, 1),
+    noise_scale = 2,
+    optimizer = "BFGS" #BFGS or BGW
 ) {
 
-  root <- "data/v3_1"
+  root <- "data/v3" #save directory
+  noise_tag <- gsub("\\.", "p", as.character(noise_scale))
+  
   out_dir  <- file.path(root,
-                        paste0("n_", n_persons, "_iter_", iterations))
+                        paste0("n_", n_persons, "_iter_", iterations, "_e_", noise_tag))
   
   if (!dir.exists(out_dir)) {
     dir.create(out_dir, recursive = TRUE)
@@ -89,7 +94,7 @@ force_feature_interaction <- function(
   # pval_mat <- matrix(NA, nrow = iterations, ncol = p)
   # colnames(pval_mat) <- colnames(coef_mat)
 
-  K <- 20
+  K <- 20 #num interactions considered
   interaction_idx <- (p - K + 1):p
   stopifnot(length(interaction_idx) == K)
   stopifnot(K %% 2 == 0)   # failsafe, must be even
@@ -116,7 +121,7 @@ force_feature_interaction <- function(
     
     ## initialize alpha-specific aspects
     alpha <- alpha_grid[a]
-    #alpha_sig <- 0.01 #significance not needed anymore
+    #alpha_sig <- 0.01 #significance threshold not needed anymore
     
     ## REINITIALIZE alpha-specific storage
     coef_mat      <- matrix(NA, iterations, p)
@@ -124,6 +129,9 @@ force_feature_interaction <- function(
     best_lambda   <- numeric(iterations)
     true_beta_mat <- matrix(NA, iterations, K)
     colnames(true_beta_mat) <- interaction_names
+    
+    fit_code <- rep(NA_integer_, iterations)
+    fit_ll   <- rep(NA_real_, iterations)
 
   for (iter in seq_len(iterations)) {
     
@@ -134,7 +142,7 @@ force_feature_interaction <- function(
     active_idx <- sample(interaction_idx, size = K / 2, replace = FALSE)
     true_betas_iter[interaction_idx] <- 0
     
-    #randomized signal induction
+    #randomized signal/interaction induction
     true_betas_iter[active_idx] <-
       round(
         #runif(K / 2, 0.2, 0.6) * 2 * #scale by 2x
@@ -152,9 +160,9 @@ force_feature_interaction <- function(
     g3 <- rgumbel(nrow(alt3))
 
     #utility functions
-    util1 <- alt1 %*% true_betas_iter + g1
-    util2 <- alt2 %*% true_betas_iter + g2
-    util3 <- alt3 %*% true_betas_iter + g3
+    util1 <- alt1 %*% true_betas_iter + noise_scale * g1
+    util2 <- alt2 %*% true_betas_iter + noise_scale * g2
+    util3 <- alt3 %*% true_betas_iter + noise_scale * g3
 
     choice <- apply(cbind(util1, util2, util3), 1, which.max)
 
@@ -175,13 +183,14 @@ force_feature_interaction <- function(
       person_id    = data$id,
       alpha        = alpha,
       n_folds      = 3,
-      th = 0.1
+      th = NULL, #no internal thresholding, post-hoc only
+      optimizer = optimizer #BFGS or BGW
     )
-    
-    best_lambda[iter] <- cv$best_lambda
-    #best_lambda <- rep(0, iterations)
-    
 
+    best_lambda[iter] <- cv$best_lambda
+    #best_lambda <- rep(0, iterations) #for unpenalized MNL
+    
+    if (optimizer == "BFGS" || optimizer == "BHHH"){
     #estimation penalized
     # fit model
     fit <- maxLik(
@@ -196,36 +205,64 @@ force_feature_interaction <- function(
       finalHessian = TRUE
     )
     
-    # #estimation unpenalized
-    # fit <- maxLik(
-    #   function(b) MNL_unpenalized(
-    #     b, 
-    #     alt_list, 
-    #     choice_list
-    #   ),
-    #   start = rep(0, p),
-    #   method = "BHHH",
-    #   finalHessian = TRUE
-    # )
 
     ## store coef_mat, pval_mat, best_lambda
-    coef_mat[iter, ] <- coef(fit)
+    beta_hat <- coef(fit)
+    coef_mat[iter, ] <- beta_hat
     
-    #fit diagnostics
-    if (iter == 1) {
-      fit_code  <- rep(NA_integer_, iterations)
-      fit_ll    <- rep(NA_real_, iterations)
-    }
-    
+    # #fit diagnostics
+    # if (iter == 1) {
+    #   fit_code  <- rep(NA_integer_, iterations)
+    #   fit_ll    <- rep(NA_real_, iterations)
+    # }
+
     fit_code[iter] <- tryCatch(as.integer(fit$code), error = function(e) NA_integer_)
     fit_ll[iter]   <- tryCatch(as.numeric(logLik(fit)), error = function(e) NA_real_)
     
-  } #end iterations loop
+    } else if(optimizer == "BGW"){
+      
+      calcR <- function(b) {
+        MNL(
+          b, alt_list, choice_list,
+          lambda = best_lambda[iter],
+          alpha = alpha,
+          intercept_index = NULL,
+          out = "choiceprobs"
+        )
+      }
+      
+      fit <- bgw::bgw_mle(
+        calcR = calcR,
+        betaStart = rep(0, p),
+        bgw_settings = list(printLevel = 0)
+      )
+      
+      beta_hat <- as.numeric(fit$estimate)
+      coef_mat[iter, ] <- beta_hat
+      
+      # diagnostics
+      fit_code[iter] <- tryCatch(as.integer(fit$code), error = function(e) NA_integer_)
+      fit_ll[iter]   <- tryCatch(as.numeric(fit$maximum), error = function(e) NA_real_)
+    } else {
+      
+      stop("Unsupported optimizer")
+    }
+    
+    
+    
+    } #end iterations loop
+    
+    #coef_mat[iter, ] <- beta_hat
     
     #save fit diagonstics
     write.csv(
-      data.frame(Alpha=alpha, Iteration=seq_len(iterations),
-                 BestLambda=best_lambda, FitCode=fit_code, LogLik=fit_ll),
+      data.frame(Alpha=alpha,
+                 NoiseScale = noise_scale,
+                 Iteration=seq_len(iterations),
+                 BestLambda=best_lambda, 
+                 FitCode=fit_code, 
+                 LogLik=fit_ll
+                 ),
       paste0(out_dir, "/", n_persons, "n_", iterations, "_alpha_", alpha, "_fit_diagnostics.csv"),
       row.names = FALSE
     )
@@ -235,27 +272,36 @@ force_feature_interaction <- function(
     colnames(coef_interactions) <- interaction_names
     
     write.csv(
-      cbind(Alpha = alpha, Iteration = seq_len(iterations), true_beta_mat),
+      cbind(Alpha = alpha,
+            NoiseScale = noise_scale,
+            Iteration = seq_len(iterations), 
+            true_beta_mat),
       paste0(out_dir, "/", n_persons, "n_", iterations, "_alpha_", alpha, "_true_interactions.csv"),
       row.names = FALSE
     )
     
     write.csv(
-      cbind(Alpha = alpha, Iteration = seq_len(iterations), coef_interactions),
+      cbind(Alpha = alpha,
+            NoiseScale = noise_scale,
+            Iteration = seq_len(iterations), 
+            coef_interactions),
       paste0(out_dir, "/", n_persons, "n_", iterations, "_alpha_", alpha, "_interaction_coefs.csv"),
       row.names = FALSE
     )
     
     ## lambdas
     write.csv(
-      data.frame(Alpha = alpha, Iteration = seq_len(iterations), BestLambda = best_lambda),
+      data.frame(Alpha = alpha, 
+                 NoiseScale = noise_scale,
+                 Iteration = seq_len(iterations), 
+                 BestLambda = best_lambda),
       paste0(out_dir, "/", n_persons, "n_", iterations, "_alpha_", alpha, "_optimal_lambdas.csv"),
       row.names = FALSE
     )
     
     
-    #th_grid <- c(1e-4, 1e-3, 0.01, 0.05, 0.1, 0.5) #threshold grid
-    th_grid <- c(0) #turn off thresholding
+    th_grid <- c(1e-4, 1e-3, 0.01, 0.05, 0.1, 0.5) #threshold grid
+    #th_grid <- c(0) #turn off thresholding
     
     detected_long_all <- vector("list", length(th_grid))
     rates_all <- vector("list", length(th_grid))
@@ -270,6 +316,7 @@ force_feature_interaction <- function(
       
       detected_long_all[[i]] <- data.frame(
         Alpha       = alpha,
+        NoiseScale = noise_scale,
         Threshold   = th,
         Iteration   = rep(seq_len(iterations), each = K),
         Interaction = rep(interaction_names, times = iterations),
@@ -285,6 +332,7 @@ force_feature_interaction <- function(
       
       rates_all[[i]] <- data.frame(
         Alpha     = alpha,
+        NoiseScale = noise_scale,
         Threshold = th,
         TP = TP, FN = FN, FP = FP, TN = TN,
         TPR = TP / (TP + FN),
@@ -296,6 +344,7 @@ force_feature_interaction <- function(
       
       cm_all[[i]] <- data.frame(
         Alpha = alpha,
+        NoiseScale = noise_scale,
         Threshold = th,
         TrueStatus = c("Induced", "Induced", "Not Induced", "Not Induced"),
         Predicted  = c("Detected", "Not Detected", "Detected", "Not Detected"),
@@ -337,18 +386,29 @@ force_feature_interaction <- function(
 
 
 ## parallel backend
-plan(multisession, workers = 59)
+plan(multisession, workers = 50)
 options(future.rng.onMisuse = "ignore")
 
 # grid for persons
-n_grid <- c(973)
+n_grid <- c(50, 250, 600, 973)
+#grid for SNR
+noise_grid <- c(1.5, 1.75, 2)
+
+run_grid <- expand.grid(
+  n_persons = n_grid,
+  noise_scale = noise_grid,
+  KEEP.OUT.ATTRS = FALSE,
+  stringsAsFactors = FALSE
+)
 
 ## run experiments in parallel
-future_lapply(n_grid, function(n) {
+future_lapply(seq_len(nrow(run_grid)), function(i) {
   force_feature_interaction(
-    n_persons  = n,
+    n_persons  = run_grid$n_persons[i],
     iterations = 100,
-    alpha_grid = c(0.5, 1)
+    alpha_grid = c(0.5, 1),
+    noise_scale = run_grid$noise_scale[i],
+    optimizer = "BGW"
   )
 })
 

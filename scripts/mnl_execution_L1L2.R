@@ -1,7 +1,12 @@
-#Libraries
+## REAL DATA DOGGERBANK
+###Data read and saved into doggerbank/interactions/mnl_parallel/data
+###plots go to doggerbank/interactions/mnl_parallel/plots
+###all the functions/source files used in doggerbank/interactions/mnl_parallel/functions
+###this and other scripts in doggerbank/interactions/mnl_parallel/scripts
 
+#Libraries
 required_packages <- c("maxLik", "matrixStats", "tidyr", "dplyr", "glmnet", "bgw", 
-                       "Rfast", "future.apply", "future", "ggplot2")
+                       "Rfast", "future.apply", "future", "ggplot2", "bgw")
 
 install_if_missing <- function(packages) {
   missing_packages <- packages[!(packages %in% installed.packages()[, "Package"])]
@@ -24,21 +29,24 @@ source("functions/pre_process.R")
 source("functions/MNL_functions_execution.R")
 
 #Thresholding
-#BHHH + L1/L2 cannot introduce exact sparsity 
-SCREENING_THRESHOLD <- 0.01
+#BHHH + L1/L2 cannot introduce exact sparsity
+#the magnitude of coefficients under which we shrink (post-hoc)
+threshold <- 0.01
 
 #Data
-data <- read.csv("data/doggerbank_full_973_wide.csv")
+data <- read.csv("data/doggerbank_full_regularization.csv")
 #Alternative
 #alternate specific constant for choices 2 and 3
-data$ASC21 <- 0
-data$ASC22 <- 1
-data$ASC23 <- 0
-data$ASC31 <- 0
-data$ASC32 <- 0
-data$ASC33 <- 1
+# data$ASC21 <- 0
+# data$ASC22 <- 1
+# data$ASC23 <- 0
+# data$ASC31 <- 0
+# data$ASC32 <- 0
+# data$ASC33 <- 1
 
-#scaling (can be implemented if needed)
+#write.csv(data, "data/doggerbank_full_regularization.csv") #read this in from now on
+
+#scaling (uncomment if needed)
 # data$income <- scale(data$income)
 # data$age <- scale(data$age)
 # data$cost <- scale(data$cost)
@@ -49,15 +57,20 @@ output <- data_wide_to_long(data, n_alt = 3)
 df_demo <- output$df_demo
 df_long <- output$df_long 
 
+#choice option specific, no altering
 choice_vars <- c('ASC2', 'ASC3', 'cost', 'spec10', 'spec25', 'prot25', 'prot50', 'invasive')
 
-demographic_vars <- c('male', 'edu', 'job', 'age', 'q227', 'q229', 'q1', 'q2',
-                   'q6', 'q7', 'q10', 'job1', 'job2', 'job3', 'job4',
-                   'job5', 'job6', 'job7', 'job8')
+#respondent specific
+# demographic_vars <- c('male', 'edu', 'age', 'q227', 'q229', 'q1', 'q2',
+#                    'q6', 'q7', 'q10', 'job1', 'job2', 'job3', 'job4',
+#                    'job5', 'job6', 'job7', 'job8')
+
+demographic_vars <- c('male', 'job1')
 
 
 final_df_scaled <- create_interaction_features(df_long, choice_vars, demographic_vars)
-#Uncomment to consider ONLY interactions
+
+#Uncomment to consider ONLY interaction terms
 #final_df_scaled <- final_df_scaled[, grepl("_", colnames(final_df_scaled))]
 
 # X <- as.matrix(final_df_scaled)
@@ -69,8 +82,17 @@ final_df_scaled <- create_interaction_features(df_long, choice_vars, demographic
 
 #ncol(final_df_scaled) gives the maximum number of possible attributes
 #marginal + interactions
-num_covariates <- 25
-selected_features <- colnames(final_df_scaled)[1:num_covariates]
+#full feature universe exists, but for readability the first few into the design matrix
+
+#full matrix
+num_covariates <- ncol(final_df_scaled)
+
+#Do not give this option to user
+#truncated matrix
+#num_covariates <- 20 #or any number of choice
+
+#selected_features <- colnames(final_df_scaled)[1:num_covariates]
+selected_features <- colnames(final_df_scaled)
 
 #to use all the covariates
 # selected_features <- colnames(final_df_scaled)
@@ -85,7 +107,7 @@ alt_matrices <- create_alt_matrices2(df_demo,
 
 #utility function matrices
 alt1 <- alt_matrices$alt1
-#print(nrow(alt1))
+#print(nrow(alt1)) #sanity
 alt2 <- alt_matrices$alt2
 alt3 <- alt_matrices$alt3
 
@@ -112,39 +134,39 @@ N <- nrow(df_long)
 # )
 
 ##Parallel
-results <- lasso_lambda_bic_parallel(
-  lambda_grid = lambda_grid,
-  alt_list,
-  choice_list,
-  n = num_covariates,
-  threshold = SCREENING_THRESHOLD,
-  N
-)
-
-lambda_results <- results$lambda_results
-
-# Plot BIC values
-plot_bic <- ggplot(lambda_results, aes(x = lambda, y = BIC)) +
-  geom_line(size = 1.5, colour = "grey") +
-  geom_point(size = 3) +
-  theme_bw(base_size = 16) +
-  theme(
-    panel.grid.major = element_blank(),
-    panel.grid.minor = element_blank(),
-    axis.line = element_line(colour = "black"),
-    text = element_text(family = "Helvetica"),
-    axis.text = element_text(size = 18),
-    axis.title = element_text(size = 26)
-  ) +
-  labs(
-    x = "Lambda",
-    y = "BIC"
-    #title = "BIC vs Lambda (Elastic Net Regularization)"
-  )
+# results <- lasso_lambda_bic_parallel(
+#   lambda_grid = lambda_grid,
+#   alt_list,
+#   choice_list,
+#   n = num_covariates,
+#   threshold = SCREENING_THRESHOLD,
+#   N
+# )
+# 
+# lambda_results <- results$lambda_results
+# 
+# # Plot BIC values
+# plot_bic <- ggplot(lambda_results, aes(x = lambda, y = BIC)) +
+#   geom_line(linewidth = 1.5, colour = "grey") +
+#   geom_point(size = 3) +
+#   theme_bw(base_size = 16) +
+#   theme(
+#     panel.grid.major = element_blank(),
+#     panel.grid.minor = element_blank(),
+#     axis.line = element_line(colour = "black"),
+#     text = element_text(family = "Helvetica"),
+#     axis.text = element_text(size = 18),
+#     axis.title = element_text(size = 26)
+#   ) +
+#   labs(
+#     x = "Lambda",
+#     y = "BIC"
+#     #title = "BIC vs Lambda (Elastic Net Regularization)"
+#   )
 
 # Save (comment/uncomment as needed)
 #ggsave("bic_vs_lambda.pdf", plot_bic, width = 7, height = 5, dpi = 300)
-ggsave("plots/bic_vs_lambda.png", plot_bic, width = 10, height = 7, dpi = 400)
+#ggsave("plots/bic_vs_lambda.png", plot_bic, width = 10, height = 7, dpi = 400)
 
 
 
@@ -162,6 +184,8 @@ ggsave("plots/bic_vs_lambda.png", plot_bic, width = 10, height = 7, dpi = 400)
 #   )
 
 #Parallel
+
+startTime <- Sys.time()
 results_cv <- tune_lambda_cv_parallel(
   df_demo, 
   selected_features, 
@@ -169,34 +193,39 @@ results_cv <- tune_lambda_cv_parallel(
   demographic_vars, 
   n_alt = 3, 
   n = num_covariates, 
-  n_folds = 5
+  n_folds = 5,
+  optimizer = "BFGS",
+  early_stop = FALSE
 )
+
+endTime <- Sys.time()
+print(endTime - startTime) 
 
 lambda_results_cv <- results_cv$lambda_results
 
-#Plot mean LL
+#Plot mean LL (out of sample LL)
 
-plot_cv <-ggplot(lambda_results_cv, aes(x = lambda, y = mean_LL)) +
-  geom_line(size = 1.5, colour = "grey") +
-  geom_point(size = 3) +
-  theme_bw(base_size = 16) +
-  theme(
-    panel.grid.major = element_blank(),
-    panel.grid.minor = element_blank(),
-    axis.line = element_line(colour = "black"),
-    text = element_text(family = "Helvetica"),
-    axis.text = element_text(size = 18),
-    axis.title = element_text(size = 26)
-  ) +
-  labs(
-    x = "Lambda",
-    y = "Mean Out-of-Sample LL"
-    #title = "Cross-Validated Log-Likelihood vs Lambda"
-  )
+# plot_cv <-ggplot(lambda_results_cv, aes(x = lambda, y = mean_LL)) +
+#   geom_line(linewidth = 1.5, colour = "grey") +
+#   geom_point(size = 3) +
+#   theme_bw(base_size = 16) +
+#   theme(
+#     panel.grid.major = element_blank(),
+#     panel.grid.minor = element_blank(),
+#     axis.line = element_line(colour = "black"),
+#     text = element_text(family = "Helvetica"),
+#     axis.text = element_text(size = 20),
+#     axis.title = element_text(size = 30)
+#   ) +
+#   labs(
+#     x = "Lambda",
+#     y = "Mean Out-of-Sample LL"
+#     #title = "Cross-Validated Log-Likelihood vs Lambda"
+#   )
 
 # Save (comment/uncomment as needed)
 #ggsave("plots/cv_ll_vs_lambda.pdf", plot_cv, width = 7, height = 5, dpi = 300)
-ggsave("plots/cv_ll_vs_lambda.png", plot_cv, width = 10, height = 7, dpi = 400)
+#ggsave("plots/cv_ll_vs_lambda.png", plot_cv, width = 10, height = 7, dpi = 400)
 
 
 
@@ -209,14 +238,18 @@ ggsave("plots/cv_ll_vs_lambda.png", plot_cv, width = 10, height = 7, dpi = 400)
 
 
 #Show the final model
-#Using CV tuned parameter
+#Using CV tuned parameter (preferred over BIC tuned parameter)
 
 start.values <- rep(0, length(selected_features))
 
+#maxLik
 final_model <- maxLik(
-  function(coeff) MNL(coeff, alt_list, choice_list, lambda = results_cv$best_lambda, 
+  function(coeff) MNL(coeff, alt_list, 
+                      choice_list, 
+                      lambda = results_cv$best_lambda, 
                       alpha = 0.5,
-                      final_eval = FALSE, nrep = 6, intercept_index = 1),
+                      final_eval = FALSE, nrep = 6, intercept_index = 1,
+                      out = "logprobs"),
   start = start.values,
   method = "BHHH",
   iterlim = 200,
@@ -224,4 +257,38 @@ final_model <- maxLik(
   finalHessian = TRUE
 )
 
-coefficients_table <- summary_table_mnl(final_model, selected_features)
+#final table
+#coefficients in decreasing order of magnitude
+coefficients_table <- summary_table_mnl(final_model, selected_features, threshold = threshold)
+plan(sequential)
+
+
+
+#BGW optimizer
+calcR <- function(coeff){
+
+  MNL(
+    coeff,
+    alt_list,
+    choice_list,
+    lambda = results_cv$best_lambda,
+    alpha = 0.5,
+    final_eval = FALSE,
+    nrep = 6,
+    intercept_index = 1,
+    out = "choiceprobs"
+  )
+
+}
+
+bgw_fit <- bgw::bgw_mle(
+  calcR = calcR,
+  betaStart = start.values
+)
+
+#beta_hat <- bgw_fit$estimate
+
+
+#summary_table_mnl(final_model, selected_features, threshold = 0.01, method = "MAXLIK")
+
+#summary_table_mnl(bgw_fit, selected_features, threshold = 0.01, method = "BGW")

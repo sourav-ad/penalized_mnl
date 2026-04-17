@@ -139,7 +139,7 @@ run_elastic_net <- function(X, y, alpha = 0.5, n = 15){
 #Elastic net parameter tuning using BIC values
 
 lasso_lambda_bic <- function(lambda_grid, alt_matrices, df_long, n = 10, 
-                             threshold = SCREENING_THRESHOLD, N) {
+                             threshold = 0.01, N) {
   stopifnot(!missing(threshold))
   best_lambda <- NULL
   best_BIC <- Inf
@@ -238,7 +238,12 @@ lasso_lambda_bic <- function(lambda_grid, alt_matrices, df_long, n = 10,
 
 #Elastic net parameter tuning using 5 fold CV on out of sample log likelihood
 
-tune_lambda_cv <- function(df_demo, selected_features, lambda_grid, n_alt = 3, n = 10, n_folds = 5) {
+tune_lambda_cv <- function(df_demo, 
+                           selected_features, 
+                           lambda_grid, 
+                           n_alt = 3, 
+                           n = 10, 
+                           n_folds = 5) {
   #Create folds (respondent-wise split)
   set.seed(123)
   id_list <- unique(df_demo$id)
@@ -306,24 +311,89 @@ tune_lambda_cv <- function(df_demo, selected_features, lambda_grid, n_alt = 3, n
 
 #Print a final summary table with detailed information about the covariates
 
-summary_table_mnl <- function(model, selected_features, threshold = SCREENING_THRESHOLD){
-  #stopifnot(!missing(threshold))
-  names(model$estimate) <- selected_features
-  summary_res <- summary(model)
-  coef_df <- as.data.frame(summary_res$estimate)
-  coef_df$Feature <- rownames(coef_df)
-  colnames(coef_df) <- c("Estimate", "Std.Error", "t.value", "p.value", "Feature")
+# summary_table_mnl <- function(model, selected_features, threshold = 0.01){
+#   #stopifnot(!missing(threshold))
+#   names(model$estimate) <- selected_features
+#   summary_res <- summary(model)
+#   coef_df <- as.data.frame(summary_res$estimate)
+#   coef_df$Feature <- rownames(coef_df)
+#   colnames(coef_df) <- c("Estimate", "Std.Error", "t.value", "p.value", "Feature")
+#   
+#   coef_df$Estimate   <- round(coef_df$Estimate, 4)
+#   coef_df$Std.Error  <- round(coef_df$Std.Error, 4)
+#   coef_df$t.value    <- round(coef_df$t.value, 3)
+#   coef_df$p.value    <- signif(coef_df$p.value, 3)
+#   
+#   coef_df$Shrunk <- ifelse(abs(coef_df$Estimate) < threshold, "Yes", "No")
+#   final_table <- coef_df[, c("Feature", "Estimate", "Std.Error", "t.value", "p.value", "Shrunk")]
+#   final_table <- final_table[order(-abs(final_table$Estimate)), ]
+#   print(final_table, row.names = FALSE)
+#   return(final_table)
+# }
+
+
+summary_table_mnl <- function(model, 
+                              selected_features, 
+                              threshold = 0.01, 
+                              method = "MAXLIK"){
   
-  coef_df$Estimate   <- round(coef_df$Estimate, 4)
-  coef_df$Std.Error  <- round(coef_df$Std.Error, 4)
-  coef_df$t.value    <- round(coef_df$t.value, 3)
-  coef_df$p.value    <- signif(coef_df$p.value, 3)
-  
-  coef_df$Shrunk <- ifelse(abs(coef_df$Estimate) < threshold, "Yes", "No")
-  final_table <- coef_df[, c("Feature", "Estimate", "Std.Error", "t.value", "p.value", "Shrunk")]
-  final_table <- final_table[order(-abs(final_table$Estimate)), ]
-  print(final_table, row.names = FALSE)
-  return(final_table)
+  #coefficients depending on method
+  if(method == "BGW"){
+    
+    beta_hat <- as.numeric(model$estimate)
+    se_hat <- model$seBGW
+    t_hat  <- model$tstatBGW
+    
+    if (is.null(se_hat)) {
+      se_hat <- rep(NA_real_, length(beta_hat))
+    }
+    
+    if (is.null(t_hat)) {
+      t_hat <- rep(NA_real_, length(beta_hat))
+    }
+    
+    p_hat <- 2 * pnorm(-abs(t_hat))
+    
+    coef_df <- data.frame(
+      Feature  = selected_features,
+      Estimate = round(beta_hat, 4),
+      Std.Error = round(se_hat, 4),
+      t.value   = round(t_hat, 3),
+      p.value   = signif(p_hat, 3)
+    )
+    
+    coef_df$Shrunk <- ifelse(abs(coef_df$Estimate) < threshold, "Yes", "No")
+    
+    coef_df <- coef_df[, c("Feature", "Estimate", "Std.Error", "t.value", "p.value", "Shrunk")]
+    coef_df <- coef_df[order(-abs(coef_df$Estimate)), ]
+    
+    print(coef_df, row.names = FALSE)
+    return(coef_df)
+    
+  } else {
+    
+    #maxLik
+    names(model$estimate) <- selected_features
+    
+    summary_res <- summary(model)
+    coef_df <- as.data.frame(summary_res$estimate)
+    
+    coef_df$Feature <- rownames(coef_df)
+    colnames(coef_df) <- c("Estimate", "Std.Error", "t.value", "p.value", "Feature")
+    
+    coef_df$Estimate   <- round(coef_df$Estimate, 4)
+    coef_df$Std.Error  <- round(coef_df$Std.Error, 4)
+    coef_df$t.value    <- round(coef_df$t.value, 3)
+    coef_df$p.value    <- signif(coef_df$p.value, 3)
+    
+    coef_df$Shrunk <- ifelse(abs(coef_df$Estimate) < threshold, "Yes", "No")
+    
+    final_table <- coef_df[, c("Feature", "Estimate", "Std.Error", "t.value", "p.value", "Shrunk")]
+    final_table <- final_table[order(-abs(final_table$Estimate)), ]
+    
+    print(final_table, row.names = FALSE)
+    return(final_table)
+  }
 }
 
 
@@ -331,7 +401,7 @@ summary_table_mnl <- function(model, selected_features, threshold = SCREENING_TH
 ##Parallelization function
 
 lasso_lambda_bic_parallel <- function(lambda_grid, alt_list, choice_list, n = 10, 
-                                      threshold = SCREENING_THRESHOLD, N, alpha = 0.5) {
+                                      threshold = 0.01, N, alpha = 0.5) {
   stopifnot(!missing(threshold))
   library(future.apply)
   
@@ -381,7 +451,8 @@ lasso_lambda_bic_parallel <- function(lambda_grid, alt_list, choice_list, n = 10
     LL_unpenalized <- sum(MNL_unpenalized(res$estimate, alt_list, choice_list,
                                           final_eval = FALSE, nrep = 6))
     
-    active_coeffs <- coef(res)[abs(coef(res)) >= threshold]
+    #active_coeffs <- coef(res)[abs(coef(res)) >= threshold]
+    active_coeffs <- coef(res)[abs(coef(res)) >= 1e-6]
     k <- length(active_coeffs)
     BIC_lasso <- -2 * LL_unpenalized + k * log(N)
     
@@ -498,14 +569,20 @@ lasso_lambda_bic_parallel <- function(lambda_grid, alt_list, choice_list, n = 10
 # }
 
 
-tune_lambda_cv_parallel <- function(df_demo, 
-                                    selected_features, 
+tune_lambda_cv_parallel <- function(df_demo,
+                                    selected_features,
                                     lambda_grid = NULL,
-                                    demographic_vars, n_alt = 3, n = 10, n_folds = 5,
-                                    n_lambda = 30, lambda_min = 1e-4, lambda_max = 1,
-                                    patience = 3, #after how many log LL reduction should iterations stop
-                                    alpha = 1
-                                    ) {
+                                    demographic_vars,
+                                    n_alt = 3,
+                                    n = 10,
+                                    n_folds = 5,
+                                    n_lambda = 30,
+                                    lambda_min = 1e-4,
+                                    lambda_max = 1,
+                                    patience = 3,
+                                    alpha = 1,
+                                    optimizer = "BFGS",
+                                    early_stop = TRUE) {
   library(future.apply)
   
   # --- Log-spaced λ grid if not provided ---
@@ -543,27 +620,92 @@ tune_lambda_cv_parallel <- function(df_demo,
       choice_list_test  <- lapply(1:n_alt, function(j) test_df[[paste0("choice", j)]])
       
       start.values <- rep(0, n)
-      res <- maxBFGS(
-        function(coeff) MNL(coeff, alt_list_train, choice_list_train, 
-                            lambda, 
-                            #alpha = 0.5,
-                            alpha,
-                            final_eval = FALSE, nrep = 6, intercept_index = 1),
-        start = start.values,
-        print.level = 0,
-        iterlim = 200,
-        finalHessian = FALSE
-      )
       
-      ll_out_sample <- MNL_unpenalized(res$estimate, alt_list_test, choice_list_test, 
+      # res <- maxBFGS(
+      # function(coeff) MNL(coeff, alt_list_train, choice_list_train,
+      #                       lambda,
+      #                       #alpha = 0.5,
+      #                       alpha,
+      #                       final_eval = FALSE, nrep = 6, intercept_index = 1),
+      #   start = start.values,
+      #   print.level = 0,
+      #   iterlim = 200,
+      #   finalHessian = FALSE
+      # )
+      
+      if (optimizer == "BFGS") {
+        
+        res <- maxBFGS(
+          function(coeff) MNL(coeff, 
+                              alt_list_train, 
+                              choice_list_train,
+                              lambda,
+                              alpha,
+                              final_eval = FALSE,
+                              nrep = 6,
+                              intercept_index = 1,
+                              out = "logprobs"),
+          start = start.values,
+          print.level = 0,
+          iterlim = 200,
+          finalHessian = FALSE
+        )
+        
+        beta_hat <- res$estimate
+        
+      } else if (optimizer == "BGW") {
+        
+        calcR <- function(coeff) { 
+          
+          coeff <- as.numeric(coeff)
+          
+          MNL(coeff, 
+              alt_list_train, 
+              choice_list_train,
+              lambda,
+              alpha,
+              final_eval = FALSE,
+              nrep = 6,
+              intercept_index = 1,
+              out = "choiceprobs")
+        }
+        
+        res <- bgw::bgw_mle(
+          calcR = calcR,
+          betaStart = start.values,
+          bgw_settings = list(
+            printLevel = 0
+          )
+        )
+        
+        #print(res$estimate)
+        beta_hat <- as.numeric(res$estimate)
+        
+        
+      } else {
+        
+        stop("Unsupported optimizer")
+        
+      }
+      
+    
+      ll_out_sample <- MNL_unpenalized(beta_hat, 
+                                       alt_list_test, 
+                                       choice_list_test, 
                                        final_eval = FALSE, nrep = 6)
+      
+      
       fold_lls[fold] <- sum(ll_out_sample)
+      #fold_lls[fold] <- mean(ll_out_sample)
     }
     
     mean_LL <- mean(fold_lls)
     results <- rbind(results, data.frame(lambda = lambda, mean_LL = mean_LL))
     
-    # Early stopping check
+    # Early stopping, if LL doesn't improve it won't go further after 3 steps
+    if(early_stop){
+    
+    #best_LL <- Inf
     if (mean_LL > best_LL) {
       best_LL <- mean_LL
       no_improve_count <- 0
@@ -574,13 +716,13 @@ tune_lambda_cv_parallel <- function(df_demo,
     if (no_improve_count >= patience) {
       message("Early stopping at lambda = ", lambda, " after ", patience, " declines.")
       break
-    }
+    }}
   }
   
   best_idx <- which.max(results$mean_LL)
   best_lambda <- results$lambda[best_idx]
   
-  cat("\n===== Lambda tuning summary (CV + Log Grid + Early Stopping) =====\n")
+  cat("\n===== Lambda tuning summary (CV + Log Grid + Early stopping) =====\n")
   print(results)
   cat("\nBest lambda based on mean out-of-sample LL:", best_lambda, "\n")
   
@@ -601,7 +743,8 @@ tune_lambda_cv_bespoke <- function(
     n_folds = 5,
     start = NULL,
     method = "BHHH",
-    th = NULL
+    th = NULL,
+    optimizer = "BFGS"
 ) {
   
   ## NOT for the df_demo pipeline
@@ -666,38 +809,70 @@ tune_lambda_cv_bespoke <- function(
         y[idx_test]
       )
       
+      if(optimizer == "BFGS" || optimizer == "BHHH"){
+        
       #fit penalized model
       fit <- maxLik(
         function(b) MNL(
-          b,
-          alt_train,
-          choice_train,
-          lambda = lambda,
-          alpha = alpha,
-          intercept_index = NULL
-        ),
-        start = start,
-        method = method,
-        finalHessian = FALSE
-      )
+                        b,
+                        alt_train,
+                        choice_train,
+                        lambda = lambda,
+                        alpha = alpha,
+                        intercept_index = NULL
+                       ),
+          start = start,
+          method = method,
+          finalHessian = FALSE
+      ) 
+          bets_hat <- coef(fit)
       
-      #create a new object
-      b_hat <- coef(fit)
-      #threshold the coeff
-      if (!is.null(th)) {
-        b_hat <- b_hat * (abs(b_hat) >= th)
+      }  else if (optimizer == "BGW"){
+        
+        calcR <- function(coeff) {
+          
+          MNL(
+            coeff,
+            alt_train,
+            choice_train,
+            lambda = lambda,
+            alpha = alpha,
+            intercept_index = NULL,
+            out = "choiceprobs"
+          )
+        }
+        
+        fit <- bgw::bgw_mle(
+          calcR = calcR,
+          betaStart = start,
+          bgw_settings = list(printLevel = 0)
+        )
+        
+        
+        beta_hat <- as.numeric(fit$estimate)
+        
       }
       
       #unpenalized log-likelihood on testing fold
       ll_test <- MNL(
-        #coef(fit), 
-        b_hat, #pass thresholded coefficients
+        beta_hat,
         alt_test,
         choice_test,
         lambda = 0,          #no penalty on test data
         alpha = alpha,
         final_eval = TRUE
       )
+      
+      # #unpenalized log-likelihood on testing fold
+      # ll_test <- MNL(
+      #   coef(fit), 
+      #   #b_hat, #pass thresholded coefficients
+      #   alt_test,
+      #   choice_test,
+      #   lambda = 0,          #no penalty on test data
+      #   alpha = alpha,
+      #   final_eval = TRUE
+      # )
       
       #store sum log-likelihood 
       ll_fold[k] <- sum(ll_test)

@@ -49,62 +49,135 @@
 
 
 #Generalized function
-MNL <- function(coeff, alt_list, choice_list, lambda, alpha = 0.5, final_eval = FALSE,
-                   nrep = 6, intercept_index = 1) {
-  n_alt <- length(alt_list)  # Number of alternatives
+# MNL <- function(coeff, alt_list, choice_list, lambda, alpha = 0.5, final_eval = FALSE,
+#                    nrep = 6, intercept_index = 1) {
+#   n_alt <- length(alt_list)  # Number of alternatives
+#   
+#   # Compute utilities for each alternative
+#   utils <- lapply(alt_list, function(alt) alt %*% coeff[1:ncol(alt)])
+#   
+#   # Exponentiate utilities
+#   exp_utils <- lapply(utils, exp)
+#   
+#   # Compute numerator: sum(exp(util) * choice)
+#   numerator <- Reduce(`+`, mapply(`*`, exp_utils, choice_list, SIMPLIFY = FALSE))
+#   
+#   # Compute denominator: sum(exp(util))
+#   denominator <- Reduce(`+`, exp_utils)
+#   
+#   # Compute choice probabilities
+#   choice_probs <- colprods(matrix(numerator / denominator, nrow = nrep))
+#   
+#   # Log-likelihood
+#   LL <- log(choice_probs)
+#   
+#   if (length(LL) == 1) {
+#     stop("Error: LL is returning a single scalar instead of a vector.")
+#   }
+#   
+#   #L1 norm
+#   # penalty <- if(!is.null(intercept_index)){
+#   #   lambda * sum(abs(coeff[-intercept_index]))
+#   # } else {
+#   #   lambda * sum(abs(coeff))
+#   # }
+#   
+#   #L1 + L2, elastic net
+#   penalty <- if (!is.null(intercept_index)) {
+#     coeff_excl_intercept <- coeff[-intercept_index]
+#     lambda * (alpha * sum(abs(coeff_excl_intercept)) + ((1 - alpha) / 2) * sum(coeff_excl_intercept^2))
+#   } else {
+#     lambda * (alpha * sum(abs(coeff)) + ((1 - alpha) / 2) * sum(coeff^2))
+#   }
+# 
+#   LL_elastic_net <- LL - penalty
+#   return(LL_elastic_net)
+# }
+
+#switch function
+MNL <- function(coeff, 
+                alt_list, 
+                choice_list, 
+                lambda, alpha = 0.5,
+                final_eval = FALSE, nrep = 6, intercept_index = 1,
+                out = "logprobs") {
   
-  # Compute utilities for each alternative
-  utils <- lapply(alt_list, function(alt) alt %*% coeff[1:ncol(alt)])
+  n_alt <- length(alt_list)
   
-  # Exponentiate utilities
+  coeff <- as.numeric(coeff)
+  utils <- lapply(alt_list, function(alt){
+    
+    #alt %*% coeff[1:ncol(alt)]
+    alt %*% coeff[seq_len(ncol(alt))]
+    
+  } )
   exp_utils <- lapply(utils, exp)
   
-  # Compute numerator: sum(exp(util) * choice)
   numerator <- Reduce(`+`, mapply(`*`, exp_utils, choice_list, SIMPLIFY = FALSE))
-  
-  # Compute denominator: sum(exp(util))
   denominator <- Reduce(`+`, exp_utils)
   
-  # Compute choice probabilities
   choice_probs <- colprods(matrix(numerator / denominator, nrow = nrep))
   
-  # Log-likelihood
-  LL <- log(choice_probs)
+  if (out == "logprobs") { #for bhhh/bfgs optimizer 
+    LL <- log(choice_probs)
+  }
+  
+  if (out == "choiceprobs") { #for bgw optimizer
+    LL <- choice_probs
+  }
   
   if (length(LL) == 1) {
     stop("Error: LL is returning a single scalar instead of a vector.")
   }
   
-  #L1 norm
-  # penalty <- if(!is.null(intercept_index)){
-  #   lambda * sum(abs(coeff[-intercept_index]))
-  # } else {
-  #   lambda * sum(abs(coeff))
-  # }
-  
-  #L1 + L2, elastic net
   penalty <- if (!is.null(intercept_index)) {
     coeff_excl_intercept <- coeff[-intercept_index]
-    lambda * (alpha * sum(abs(coeff_excl_intercept)) + ((1 - alpha) / 2) * sum(coeff_excl_intercept^2))
+    lambda * (alpha * sum(abs(coeff_excl_intercept)) +
+                ((1 - alpha) / 2) * sum(coeff_excl_intercept^2))
   } else {
-    lambda * (alpha * sum(abs(coeff)) + ((1 - alpha) / 2) * sum(coeff^2))
+    lambda * (alpha * sum(abs(coeff)) +
+                ((1 - alpha) / 2) * sum(coeff^2))
   }
-
-  LL_elastic_net <- LL - penalty
-  return(LL_elastic_net)
+  
+  if (out == "logprobs") {
+    
+    return(LL - penalty)
+    
+  } else {
+    
+    return(LL * exp(-penalty))
+    
+  }
+  
 }
 
 
+
 #Generalized function
-MNL_unpenalized <- function(coeff, alt_list, choice_list, final_eval = FALSE,
-                   nrep = 6) {
+#unpenalized function is not needed by the optimizer 
+MNL_unpenalized <- function(coeff, 
+                            alt_list, 
+                            choice_list, 
+                            final_eval = FALSE, nrep = 6) {
+  
+  coeff <- as.numeric(coeff)
   n_alt <- length(alt_list)  # Number of alternatives
-  utils <- lapply(alt_list, function(alt) alt %*% coeff[1:ncol(alt)])
+  
+  #utils <- lapply(alt_list, function(alt) alt %*% coeff[1:ncol(alt)])
+  
+  utils <- lapply(alt_list, function(alt) {
+    alt <- as.matrix(alt)
+    storage.mode(alt) <- "numeric"
+    alt %*% coeff[seq_len(ncol(alt))]
+  })
+  
   exp_utils <- lapply(utils, exp)
   numerator <- Reduce(`+`, mapply(`*`, exp_utils, choice_list, SIMPLIFY = FALSE))
   denominator <- Reduce(`+`, exp_utils)
   choice_probs <- colprods(matrix(numerator / denominator, nrow = nrep))
   LL <- log(choice_probs)
+  #LL <- choice_probs
+  #browser()
   
   if (length(LL) == 1) {
     stop("Error: LL is returning a single scalar instead of a vector.")
@@ -112,5 +185,3 @@ MNL_unpenalized <- function(coeff, alt_list, choice_list, final_eval = FALSE,
   
   return(LL)
 }
-
-

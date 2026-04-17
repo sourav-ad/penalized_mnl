@@ -16,9 +16,21 @@ suppressPackageStartupMessages({
 
 n_val <- 250
 iterations <- 100
+#noise_scale <- 1.75
 
-pen_dir <- file.path("data", "v3", paste0("n_", n_val, "_iter_100"))
-van_dir <- file.path("data", "v3_vanilla", paste0("n_", n_val, "_iter_100"))
+noise_tag <- gsub("\\.", "p", as.character(noise_scale))
+
+# pen_dir <- file.path("data", "v3", 
+#                      paste0("n_", n_val, "_iter_100", "_e_", noise_tag))
+# 
+# van_dir <- file.path("data", "v3_vanilla", 
+#                      paste0("n_", n_val, "_iter_100", "_e_", noise_tag))
+
+pen_dir <- file.path("data", "v3", 
+                     paste0("n_", n_val, "_iter_100"))
+
+van_dir <- file.path("data", "v3_vanilla", 
+                     paste0("n_", n_val, "_iter_100"))
 
 pen_files <- c(
   "0.5" = file.path(pen_dir, paste0(n_val, "n_", iterations, "_alpha_", 0.5, "_interaction_detection_long.csv")),
@@ -157,20 +169,28 @@ p <- ggplot(
   labs(
     x = "FPR",
     y = "TPR",
+    #title = paste0("ROC (n = ", n_val, ", c = ", noise_scale, ")")
     title = paste0("ROC (n = ", n_val, ")")
   ) +
   theme_bw() +
   theme(
     panel.grid = element_blank(),
-    axis.title.x = element_text(size = 20),
-    axis.title.y = element_text(size = 20),
-    axis.text.x  = element_text(size = 15),
-    axis.text.y  = element_text(size = 15),
-    plot.title   = element_text(size = 26)
-  )
+    axis.title.x = element_text(size = 25),
+    axis.title.y = element_text(size = 25),
+    axis.text.x  = element_text(size = 20),
+    axis.text.y  = element_text(size = 20),
+    plot.title   = element_text(size = 30),
+    legend.position = c(0.75, 0.25),
+    legend.background = element_rect(fill = "white"),
+    legend.key = element_blank(),
+    legend.text  = element_text(size = 16),
+    legend.title = element_text(size = 18)
+  ) #+ guides(color = "none", linetype = "none")
 
-print(p)
+#print(p)
 
+# ggsave(filename = file.path("plots", paste0("ROC_n", n_val, "_iter", iterations, "_e_", noise_tag, ".png")),
+#        plot = p, width = 9, height = 6, dpi = 300)
 
 ggsave(filename = file.path("plots", paste0("ROC_n", n_val, "_iter", iterations, ".png")),
        plot = p, width = 9, height = 6, dpi = 300)

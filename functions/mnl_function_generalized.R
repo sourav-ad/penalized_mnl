@@ -4,11 +4,8 @@ intercept_index<- 1
 #Generalized function
 MNL <- function(coeff, alt_list, choice_list, lambda, final_eval = FALSE) {
   n_alt <- length(alt_list)  # Number of alternatives
-  
-  # Compute utilities for each alternative
   utils <- lapply(alt_list, function(alt) alt %*% coeff[1:ncol(alt)])
   
-  # Exponentiate utilities
   exp_utils <- lapply(utils, exp)
   
   # Compute numerator: sum(exp(util) * choice)

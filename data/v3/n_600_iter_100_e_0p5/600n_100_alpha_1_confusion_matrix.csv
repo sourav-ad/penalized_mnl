@@ -1,0 +1,25 @@
+"Alpha","NoiseScale","Threshold","TrueStatus","Predicted","Count"
+1,0.5,1e-04,"Induced","Detected",985
+1,0.5,1e-04,"Induced","Not Detected",15
+1,0.5,1e-04,"Not Induced","Detected",811
+1,0.5,1e-04,"Not Induced","Not Detected",189
+1,0.5,0.001,"Induced","Detected",984
+1,0.5,0.001,"Induced","Not Detected",16
+1,0.5,0.001,"Not Induced","Detected",805
+1,0.5,0.001,"Not Induced","Not Detected",195
+1,0.5,0.01,"Induced","Detected",984
+1,0.5,0.01,"Induced","Not Detected",16
+1,0.5,0.01,"Not Induced","Detected",743
+1,0.5,0.01,"Not Induced","Not Detected",257
+1,0.5,0.05,"Induced","Detected",976
+1,0.5,0.05,"Induced","Not Detected",24
+1,0.5,0.05,"Not Induced","Detected",532
+1,0.5,0.05,"Not Induced","Not Detected",468
+1,0.5,0.1,"Induced","Detected",969
+1,0.5,0.1,"Induced","Not Detected",31
+1,0.5,0.1,"Not Induced","Detected",341
+1,0.5,0.1,"Not Induced","Not Detected",659
+1,0.5,0.5,"Induced","Detected",845
+1,0.5,0.5,"Induced","Not Detected",155
+1,0.5,0.5,"Not Induced","Detected",9
+1,0.5,0.5,"Not Induced","Not Detected",991

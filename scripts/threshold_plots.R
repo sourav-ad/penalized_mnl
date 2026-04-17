@@ -95,18 +95,23 @@ p <- ggplot(
   theme_bw() +
   theme(
     panel.grid = element_blank(),
-    axis.title.x = element_text(size = 20),
-    axis.title.y = element_text(size = 20),
-    axis.text.x  = element_text(size = 15),
-    axis.text.y  = element_text(size = 15),
-    plot.title   = element_text(size = 26)
-  )
+    axis.title.x = element_text(size = 25),
+    axis.title.y = element_text(size = 25),
+    axis.text.x  = element_text(size = 20),
+    axis.text.y  = element_text(size = 20),
+    plot.title   = element_text(size = 30),
+    legend.position = c(0.75, 0.35),
+    legend.background = element_rect(fill = "white"),
+    legend.key = element_blank(),
+    legend.text  = element_text(size = 16),
+    legend.title = element_text(size = 18)
+  ) #+ guides(color = "none", linetype = "none", shape = "none")
 
 print(p)
 
 #save
 ggsave(filename = file.path("plots", paste0("fprtpr_all", n_val, "_iter", iterations, ".png")),
-        plot = p, width = 10, height = 7, dpi = 350)
+        plot = p, width = 10, height = 7, dpi = 300)
 
 #Sanity checks
 #table(rates_df$Model)

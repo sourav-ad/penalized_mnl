@@ -10,7 +10,7 @@
 library(dplyr)
 library(ggplot2)
 
-n_val <- 250
+n_val <- 600
 iter  <- 100
 alphas <- c(0.5, 1)
 bin_width <- 0.1  # set 0 to skip binning
@@ -221,7 +221,7 @@ library(dplyr)
 library(ggplot2)
 
 
-n_val      <- 973
+n_val      <- 50
 iterations <- 100
 
 alphas    <- c(0.5, 1)
@@ -287,20 +287,22 @@ p<- ggplot(
   ) +
   theme_classic()+
   theme(
-    axis.title.x = element_text(size = 20),
-    axis.title.y = element_text(size = 20),
-    axis.text.x  = element_text(size = 15),
-    axis.text.y  = element_text(size = 15),
-    plot.title   = element_text(size = 26)
-    #legend.position = "none"
-  )
+    axis.title.x = element_text(size = 25),
+    axis.title.y = element_text(size = 25),
+    axis.text.x  = element_text(size = 20),
+    axis.text.y  = element_text(size = 20),
+    plot.title   = element_text(size = 30),
+    legend.position = c(0.75, 0.35),
+    legend.background = element_rect(fill = "white"),
+    legend.key = element_blank(),
+    legend.text  = element_text(size = 9),
+    legend.title = element_text(size = 11)
+  ) #+ guides(color = "none", linetype = "none", shape = "none")
 
-p
-
-outfile <- file.path("plots",
-                      paste0("n_", n_val, "_iter_100_power", ".png"))
+#p
  
-ggsave(outfile, plot = p, width = 8, height = 5.5, dpi = 350)
+ggsave(file.path("plots", paste0("n_", n_val, "_iter_100_power", ".png")), 
+       plot = p, width = 8, height = 5.5, dpi = 350)
 
 
 
@@ -372,20 +374,21 @@ p <- ggplot(lambda_df,
   theme(panel.grid = element_blank(), 
         legend.position = "inside", 
         legend.position.inside = c(0.02, 0.98), 
-        legend.justification = c("left", "top"), 
+        legend.justification = c("left", "top"),
+        legend.key = element_blank(),
+        legend.text  = element_text(size = 16),
+        legend.title = element_text(size = 18),
         axis.text.x = element_text(angle = 45, hjust = 1, size = 15), 
-        axis.title.x = element_text(size = 20), 
-        axis.title.y = element_text(size = 20), 
-        axis.text.y = element_text(size = 15), 
-        plot.title = element_text(size = 26) 
-        ) 
+        axis.title.x = element_text(size = 25), 
+        axis.title.y = element_text(size = 25), 
+        axis.text.y = element_text(size = 20), 
+        plot.title = element_text(size = 30) 
+        ) + guides(fill = "none")
 
-print(p + coord_cartesian(ylim = c(0, 80), expand = FALSE))
+p <- p + coord_cartesian(ylim = c(0, 80), expand = FALSE)
 
-outfile <- file.path("plots",
-                     paste0("n_", n_val, "_lambda_hist.png"))
-
-ggsave(outfile, plot = p, width = 8, height = 5.5, dpi = 300)
+ggsave(file.path("plots", paste0("n_", n_val, "_lambda_hist.png")), 
+       plot = p, width = 8, height = 5.5, dpi = 300)
 
 
 
@@ -583,11 +586,11 @@ p <- ggplot(
   theme_bw() +
   theme(
     panel.grid = element_blank(),
-    axis.title.x = element_text(size = 20),
-    axis.title.y = element_text(size = 20),
-    axis.text.x  = element_text(size = 15),
-    axis.text.y  = element_text(size = 15),
-    plot.title   = element_text(size = 26)
+    axis.title.x = element_text(size = 25),
+    axis.title.y = element_text(size = 25),
+    axis.text.x  = element_text(size = 20),
+    axis.text.y  = element_text(size = 20),
+    plot.title   = element_text(size = 30)
   )
 
 print(p)
@@ -651,20 +654,24 @@ p <- ggplot(
   ) +
   theme_classic() +
   theme(
-    axis.title.x = element_text(size = 20),
-    axis.title.y = element_text(size = 20),
-    axis.text.x  = element_text(size = 15),
-    axis.text.y  = element_text(size = 15),
-    plot.title   = element_text(size = 26)
-  )
+    axis.title.x = element_text(size = 25),
+    axis.title.y = element_text(size = 25),
+    axis.text.x  = element_text(size = 20),
+    axis.text.y  = element_text(size = 20),
+    plot.title   = element_text(size = 30),
+    legend.position = c(0.75, 0.25),
+    legend.background = element_rect(fill = "white"),
+    legend.key = element_blank(),
+    legend.text  = element_text(size = 16),
+    legend.title = element_text(size = 18)
+  ) + guides(color = "none", linetype = "none")
+  
 
-p
+#p
 
-outfile <- file.path(
+ggsave(file.path(
   "plots",
   paste0("n_", n_val, "_iter_100_power_vanilla.png")
-)
-
-ggsave(outfile, plot = p, width = 8, height = 5.5, dpi = 350)
+), plot = p, width = 8, height = 5.5, dpi = 350)
 
 
