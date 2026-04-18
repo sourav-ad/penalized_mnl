@@ -1,11 +1,5 @@
-## =========================================
 ## POWER CURVES: y = 1-FNR vs |TrueBeta|
-##  - Reads:
-##    data/n_<n>_iter_<iter>/alpha_<alpha>_interaction_detection_long.csv
-##  - Power is computed ONLY on induced cases (TrueBeta != 0)
-##  - Lines: alpha 0.5 dotted, alpha 1 solid
-##  - Facets: Threshold (since power varies by threshold)
-## =========================================
+
 
 library(dplyr)
 library(ggplot2)
@@ -461,7 +455,6 @@ print(p)
 
 outfile <- file.path("plots",
                      paste0("n_", n_val, "_fprtpr.png"))
-
 ggsave(outfile, plot = p, width = 8, height = 5.5, dpi = 300)
 
 

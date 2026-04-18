@@ -3,41 +3,70 @@
 This repository reproduces an end-to-end pipeline for estimating a multinomial logit (MNL) model with 
 elastic net regularization applied to the log-likelihood, with: 
 
-(i) interaction construction for systematic 
-preference heterogeneity
+(i) discovery of systematic preference heterogeneity
 
-(ii) $\lambda$ tuning via BIC and K-fold out-of-sample log-likelihood
+(ii) screening tool for practioners to find relevant interactions
 
-(iii) semi-synthetic recovery experiments via Gumbel-noise choice generation
+(ii) regularization parameter ($\lambda$) tuning using 5-fold out-of-sample log-likelihood
 
-(iv) parallel execution for scalability. 
+(iii) semi-synthetic coefficient recovery experiments using Gumbel-noise based choice generation
+
+(iv) choice of optimizer between BFGS and BHHH 
+
+(v) scalability using parallel execution
 
 ## Real Data (Dogger Bank)
 
--  Penalized MNL estimates for a high-dimensional utility specification.
--  $\lambda$ selection diagnostics: BIC($\lambda$) and CV out-of-sample log-likelihood($\lambda$).
--  Coefficient table with shrinkage flags / threshold screening results.
+-  Penalized MNL estimates for high-dimensional utility space.
+-  $\lambda$ selection diagnostics: CV out-of-sample log-likelihood.
+-  Coefficient table for screening.
 
 ## Semi-synthetic data
 
--  Controlled induction of interaction effects + recovery evaluation
+-  Controlled induction of interaction effects into the Dogger Bank data.
+-  Recovery analysis of those induced coefficients.
 -  Distribution of $\lambda$ across iterations.
 -  Detection results under a threshold grid.
+-  Receiver Operating Characteristic (ROC) curves for different SNR (signal-to-noise ratios) 
 
 
+## Quick start guide
 
-## Usage
+1. Download or clone this repository.
 
-Please set working directory and file paths as needed. To run the script for real data and analysis, use:
+2. Open the project in R or RStudio.
 
-```         
-source("scripts/mnl_execution_L1L2.R") 
+3. Set the working directory to the repository root.
 
-```
+4. Make sure the required packages are installed.
 
-and for semisynthetic data analysis, use:
+5. Run one of the following scripts:
 
-```         
-source("scripts/MNL_interactions_functional_v3.R") 
+- For real-data:
 
-```
+  `source("scripts/run_model_penalized_mnl.R")`
+
+- For semi-synthetic simulation study:
+
+  `source("scripts/MNL_interactions_functional_v3.R")`
+
+The scripts will create output files in the `data/` and `plots/` folders with appropriate 
+folder and file naming based on parameters used.
+
+## Repository structure
+
+- `scripts/`  
+
+  Main scripts to run penalized MNL for real data and semi-synthetic simulations.
+
+- `functions/`  
+
+  Helper functions used by the main scripts.
+
+- `data/`  
+
+  Stores input data and generated output files and folders.
+
+- `plots/`  
+
+  Stores generated figures.
