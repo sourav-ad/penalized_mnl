@@ -360,7 +360,7 @@ multinomial logit (MNL) model with elastic net regularization applied to
 the log-likelihood, with:</p>
 <ol style="list-style-type: lower-roman">
 <li><p>discovery of systematic preference heterogeneity</p></li>
-<li><p>screening tool for practioners to find relevant
+<li><p>screening tool for practitioners to find relevant
 interactions</p></li>
 <li><p>regularization parameter (<span class="math inline">\(\lambda\)</span>) tuning using 5-fold
 out-of-sample log-likelihood</p></li>
@@ -369,6 +369,13 @@ Gumbel-noise based choice generation</p></li>
 <li><p>choice of optimizer between BFGS and BHHH</p></li>
 <li><p>scalability using parallel execution</p></li>
 </ol>
+<div id="expected-data-format" class="section level2">
+<h2>Expected data format</h2>
+<p>The pipeline expects the input data in <strong>wide format</strong>,
+with one row per respondent and repeated choice-task information stored
+across columns. The scripts internally reshape the data into
+<strong>long format</strong> before estimation.</p>
+</div>
 <div id="real-data-dogger-bank" class="section level2">
 <h2>Real Data (Dogger Bank)</h2>
 <ul>
@@ -381,7 +388,8 @@ CV out-of-sample log-likelihood.</li>
 <div id="semi-synthetic-data" class="section level2">
 <h2>Semi-synthetic data</h2>
 <ul>
-<li>Controlled induction of interaction effects.</li>
+<li>Controlled induction of interaction effects into the Dogger Bank
+data.</li>
 <li>Recovery analysis of those induced coefficients.</li>
 <li>Distribution of <span class="math inline">\(\lambda\)</span> across
 iterations.</li>
@@ -396,7 +404,9 @@ iterations.</li>
 <li><p>Download or clone this repository.</p></li>
 <li><p>Open the project in R or RStudio.</p></li>
 <li><p>Set the working directory to the repository root.</p></li>
-<li><p>Make sure the required packages are installed.</p></li>
+<li><p>Make sure the working directory is set to the repository root and
+that the required input files are available in the expected
+folders.</p></li>
 <li><p>Run one of the following scripts:</p></li>
 </ol>
 <ul>

@@ -5,15 +5,21 @@ elastic net regularization applied to the log-likelihood, with:
 
 (i) discovery of systematic preference heterogeneity
 
-(ii) screening tool for practioners to find relevant interactions
+(ii) screening tool for practitioners to find relevant interactions
 
-(ii) regularization parameter ($\lambda$) tuning using 5-fold out-of-sample log-likelihood
+(iii) regularization parameter ($\lambda$) tuning using 5-fold out-of-sample log-likelihood
 
 (iii) semi-synthetic coefficient recovery experiments using Gumbel-noise based choice generation
 
 (iv) choice of optimizer between BFGS and BHHH 
 
 (v) scalability using parallel execution
+
+## Expected data format
+
+The pipeline expects the input data in **wide format**, 
+with one row per respondent and repeated choice-task information stored across columns. 
+The scripts internally reshape the data into **long format** before estimation.
 
 ## Real Data (Dogger Bank)
 
@@ -38,7 +44,8 @@ elastic net regularization applied to the log-likelihood, with:
 
 3. Set the working directory to the repository root.
 
-4. Make sure the required packages are installed.
+4. Make sure the working directory is set to the repository root and 
+   that the required input files are available in the expected folders.
 
 5. Run one of the following scripts:
 

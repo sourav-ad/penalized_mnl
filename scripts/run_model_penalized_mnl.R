@@ -24,6 +24,7 @@ choice_vars <- c(
 ) #main effects
 
 # Respondent characteristics or demographic variables
+# add/change as needed 
 demographic_vars <- c(
   "male", "edu", "job1")
 
