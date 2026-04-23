@@ -215,7 +215,7 @@ library(dplyr)
 library(ggplot2)
 
 
-n_val      <- 50
+n_val      <- 250
 iterations <- 100
 
 alphas    <- c(0.5, 1)

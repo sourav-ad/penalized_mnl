@@ -56,6 +56,8 @@ The scripts internally reshape the data into **long format** before estimation.
 - For semi-synthetic simulation study:
 
   `source("scripts/MNL_interactions_functional_v3.R")`
+  
+6. The Receiver Operating Characteristic (ROC) curves in the paper can be created using `scripts/roc_plot.R`.
 
 The scripts will create output files in the `data/` and `plots/` folders with appropriate 
 folder and file naming based on parameters used.

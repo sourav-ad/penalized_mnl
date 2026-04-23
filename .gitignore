@@ -1,5 +1,20 @@
+#R junk
 .Rproj.user
 .Rhistory
 .RData
 .Ruserdata
+
+#plots
 plots/
+
+#scripts not to track
+#they need not be on GitHub either 
+scripts/MNL_interactions_functional.R
+scripts/MNL_interactions_functional_v2.R
+scripts/MNL_interactions_functional_v4.R
+scripts/MNL_interactions_functional_v5.R
+scripts/eval_metrics.R
+scripts/mnl_interactions.R
+scripts/mnl_interaction_repetition.R
+scripts/mnl_extended.R
+scripts/mnl_with_elasticnet.R
