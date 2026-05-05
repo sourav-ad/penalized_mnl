@@ -48,17 +48,25 @@ demographic_vars <- c(
 # Use "BGW" if estimating with BGW.
 # Use "MAXLIK" if estimating with BFGS through maxLik.
 
+# model <- run_penalized_mnl(
+#   data,
+#   choice_vars,
+#   demographic_vars,
+#   lambda_grid,
+#   n_alt,
+#   n_folds,
+#   alpha,
+#   threshold,
+#   optimizer = "BGW", #Choose BGW or BFGS
+#   method = "BGW" #Choose BGW or MAXLIK (if optimizer = "BFGS")
+# )
+
 model <- run_penalized_mnl(
-  data,
-  choice_vars,
-  demographic_vars,
-  lambda_grid,
-  n_alt,
-  n_folds,
-  alpha,
-  threshold,
-  optimizer = "BGW", #Choose BGW or BFGS
-  method = "BGW" #Choose BGW or MAXLIK (if optimizer = "BFGS")
+  data = data,
+  choice_vars = choice_vars,
+  demographic_vars = demographic_vars,
+  optimizer = "BGW",
+  method = "BGW"
 )
 
 # estimated coefficients

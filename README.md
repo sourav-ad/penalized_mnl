@@ -35,6 +35,14 @@ The scripts internally reshape the data into **long format** before estimation.
 -  Detection results under a threshold grid.
 -  Receiver Operating Characteristic (ROC) curves for different SNR (signal-to-noise ratios) 
 
+## Using own dataset
+
+- The input must be in wide format, with one row per respondent-choice task.
+- Respondent ID must be named `id` and choice task ID must be named `line`.
+- The alternatives must be indexed with `y`, such as `y1`, `y2`,... and exactly one of these should equal 1 per row.
+- If the base variable is to be named, for example, `variable`, then the columns must be `variable1`, `variable2`, ...
+- Alternative-specific constants (ASCs) must also follow the same pattern.
+
 
 ## Quick start guide
 
