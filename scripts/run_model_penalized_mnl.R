@@ -11,7 +11,28 @@
 #   weak or unimportant effects.
 
 # This file contains the penalized MNL workflow
+# Also installs/loads missing packages
 source("functions/penalized_mnl_model.R")
+
+### CAUTION: SOME PACKAGES MAY TAKE A LONG TIME TO INSTALL ###
+#Libraries
+
+required_packages <- c("maxLik","matrixStats","tidyr","dplyr",
+                       "glmnet","bgw","Rfast","future.apply",
+                       "future","ggplot2", "parallelly")
+
+install_if_missing <- function(packages) {
+  missing_packages <- packages[!(packages %in% installed.packages()[, "Package"])]
+  
+  if(length(missing_packages) > 0) {
+    install.packages(missing_packages, dependencies = TRUE)  # Install missing packages
+  }
+  
+  # Load all packages
+  lapply(packages, require, character.only = TRUE)
+}
+
+install_if_missing(required_packages)
 
 # Dogger Bank choice experiment data formatted like Apollo
 data <- read.csv("data/doggerbank_full_regularization.csv")
@@ -66,7 +87,8 @@ model <- run_penalized_mnl(
   choice_vars = choice_vars,
   demographic_vars = demographic_vars,
   optimizer = "BGW",
-  method = "BGW"
+  method = "BGW",
+  n_workers = 30 #change as needed
 )
 
 # estimated coefficients

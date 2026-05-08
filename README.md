@@ -38,10 +38,14 @@ The scripts internally reshape the data into **long format** before estimation.
 ## Using own dataset
 
 - The input must be in wide format, with one row per respondent-choice task.
-- Respondent ID must be named `id` and choice task ID must be named `line`.
-- The alternatives must be indexed with `y`, such as `y1`, `y2`,... and exactly one of these should equal 1 per row.
-- If the base variable is to be named, for example, `variable`, then the columns must be `variable1`, `variable2`, ...
-- Alternative-specific constants (ASCs) must also follow the same pattern.
+- Use the script `scripts/run_model_general.csv` for the purpose. Some examples are already provided along with data.
+- Running the script needs the user to provide a `data_schema` to identify relevant columns.
+- The scripts do not create `ASC` columns, given the data. 
+- If column names contain any special characters other than underscores `_`, please remove them, as underscore `_` is used to denote interacting features. 
+- The best way to name columns will be `<variablename><choicenumber>`, for example, `spec101` or `beach501`. 
+- When providing choice specific variables in `data_schema`, just the `<variablename>` should be provided. 
+- Users can adjust the shrinkage threshold criteria, number of cores to use, `$\lambda$` grid, `$\alpha$`, `n_folds` as needed.
+- Users can also handle scaling decisions on the data as needed.  
 
 
 ## Quick start guide
@@ -87,3 +91,7 @@ folder and file naming based on parameters used.
 - `plots/`  
 
   Stores generated figures.
+  
+## Notes
+
+Intalling the R packages, if not already installed, may take some time. 

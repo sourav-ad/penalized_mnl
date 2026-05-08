@@ -386,7 +386,8 @@ force_feature_interaction <- function(
 
 
 ## parallel backend
-plan(multisession, workers = 50)
+#plan(multisession, workers = 50)
+plan(multisession, workers = availableCores())
 options(future.rng.onMisuse = "ignore")
 
 # grid for persons

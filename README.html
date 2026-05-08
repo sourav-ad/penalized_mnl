@@ -398,6 +398,32 @@ iterations.</li>
 (signal-to-noise ratios)</li>
 </ul>
 </div>
+<div id="using-own-dataset" class="section level2">
+<h2>Using own dataset</h2>
+<ul>
+<li>The input must be in wide format, with one row per respondent-choice
+task.</li>
+<li>Use the script <code>scripts/run_model_general.csv</code> for the
+purpose. Some examples are already provided along with data.</li>
+<li>Running the script needs the user to provide a
+<code>data_schema</code> to identify relevant columns.</li>
+<li>The scripts do not create <code>ASC</code> columns, given the
+data.</li>
+<li>If column names contain any special characters other than
+underscores <code>_</code>, please remove them, as underscore
+<code>_</code> is used to denote interacting features.</li>
+<li>The best way to name columns will be
+<code>&lt;variablename&gt;&lt;choicenumber&gt;</code>, for example,
+<code>spec101</code> or <code>beach501</code>.</li>
+<li>When providing choice specific variables in
+<code>data_schema</code>, just the <code>&lt;variablename&gt;</code>
+should be provided.</li>
+<li>Users can adjust the shrinkage threshold criteria, number of cores
+to use, <code>$\lambda$</code> grid, <code>$\alpha$</code>,
+<code>n_folds</code> as needed.</li>
+<li>Users can also handle scaling decisions on the data as needed.</li>
+</ul>
+</div>
 <div id="quick-start-guide" class="section level2">
 <h2>Quick start guide</h2>
 <ol style="list-style-type: decimal">
@@ -436,6 +462,11 @@ simulations.</p></li>
 <li><p><code>plots/</code></p>
 <p>Stores generated figures.</p></li>
 </ul>
+</div>
+<div id="notes" class="section level2">
+<h2>Notes</h2>
+<p>Intalling the R packages, if not already installed, may take some
+time.</p>
 </div>
 </div>
 

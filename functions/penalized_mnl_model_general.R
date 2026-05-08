@@ -1,15 +1,17 @@
-run_penalized_mnl <- function(data,
-                              choice_vars,
-                              demographic_vars,
-                              lambda_grid = exp(seq(log(6e-4), log(3e-2), length.out = 10)),
-                              n_alt = 3,
-                              n_folds = 5,
-                              alpha = 0.5,
-                              threshold = 0.01,
-                              optimizer = "BFGS",
-                              method = "MAXLIK",
-                              n_workers = NULL
-                              ){
+run_penalized_mnl <- function(
+    data,
+    choice_vars = NULL,
+    demographic_vars = NULL,
+    lambda_grid = exp(seq(log(6e-4), log(3e-2), length.out = 10)),
+    n_alt = 3,
+    n_folds = 5,
+    alpha = 0.5,
+    threshold = 0.01,
+    optimizer = "BFGS",
+    method = "MAXLIK",
+    data_schema = NULL,
+    n_workers = NULL
+){
 #browser()
   required_packages <- c(
     "maxLik","matrixStats","tidyr","dplyr",
@@ -34,11 +36,44 @@ run_penalized_mnl <- function(data,
   source("functions/utility_functions_generalized.R")
   source("functions/mnl_function.R")
   source("functions/pre_process.R")
-  source("functions/MNL_functions_execution.R")
+  source("functions/MNL_functions_general.R")
 
   #preprocessing
 
-  output <- data_wide_to_long(data, n_alt)
+  # Optional schema-driven adapter for non-Dogger-Bank datasets
+  if (!is.null(data_schema)) {
+    
+    prepared <- do.call(
+      prepare_mnl_data,
+      c(list(data = data), data_schema)
+    )
+    
+    data <- prepared$data
+    choice_vars <- prepared$choice_vars
+    demographic_vars <- prepared$demographic_vars
+    n_alt <- prepared$n_alt
+    
+    cat("\nPrepared choice vars:\n")
+    print(choice_vars)
+    
+    cat("\nPrepared demographic vars:\n")
+    print(demographic_vars)
+    
+    cat("\nPrepared data columns:\n")
+    print(names(data))
+  }
+  
+  if (is.null(choice_vars) || is.null(demographic_vars)) {
+    stop("Provide choice_vars and demographic_vars, or provide data_schema.")
+  }
+  
+  # Convert standardized wide data to long data for interaction construction
+  output <- data_wide_to_long(
+    data = data,
+    choice_vars = choice_vars,
+    demographic_vars = demographic_vars,
+    n_alt = n_alt
+  )
   
   df_demo <- output$df_demo
   df_long <- output$df_long
@@ -50,10 +85,14 @@ run_penalized_mnl <- function(data,
     choice_vars,
     demographic_vars
   )
-
+  
   selected_features <- colnames(final_df)
-
   num_covariates <- ncol(final_df)
+  
+  cat("\nSelected features entering model:\n")
+  print(selected_features)
+  
+  cat("\nNumber of features entering model:", num_covariates, "\n")
 
   #alternative matrices
 
@@ -107,7 +146,7 @@ run_penalized_mnl <- function(data,
           lambda = best_lambda,
           alpha = alpha,
           final_eval = FALSE,
-          nrep = 6,
+          nrep = nrep,
           intercept_index = 1,
           out = "logprobs"
         ),
@@ -118,12 +157,12 @@ run_penalized_mnl <- function(data,
       finalHessian = TRUE
     )
     
-    coefficients_table <- summary_table_mnl(
-      final_model,
-      selected_features,
-      threshold = threshold,
-      method = "maxLik"
-    )
+    # coefficients_table <- summary_table_mnl(
+    #   final_model,
+    #   selected_features,
+    #   threshold = threshold,
+    #   method = "maxLik"
+    # )
     
   } else if (optimizer == "BGW") {
     
@@ -135,7 +174,7 @@ run_penalized_mnl <- function(data,
         lambda = best_lambda,
         alpha = alpha,
         final_eval = FALSE,
-        nrep = 6,
+        nrep = nrep,
         intercept_index = 1,
         out = "choiceprobs"
       )
