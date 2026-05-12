@@ -38,10 +38,11 @@ The scripts internally reshape the data into **long format** before estimation.
 ## Using own dataset
 
 - The input must be in wide format, with one row per respondent-choice task.
-- Use the script `scripts/run_model_general.csv` for the purpose. Some examples are already provided along with data.
+- Use the script `scripts/run_model_general.R` for the purpose. Some examples are already provided along with data.
 - Running the script needs the user to provide a `data_schema` to identify relevant columns.
-- The scripts do not create `ASC` columns, given the data. 
-- If column names contain any special characters other than underscores `_`, please remove them, as underscore `_` is used to denote interacting features. 
+- The scripts do not create `ASC` columns. 
+- If column names contain any special characters other than underscores `_`, please remove them, 
+as underscore `_` is used to denote interacting features. A line of code already in the script can help achieve it.
 - The best way to name columns will be `<variablename><choicenumber>`, for example, `spec101` or `beach501`. 
 - When providing choice specific variables in `data_schema`, just the `<variablename>` should be provided. 
 - Users can adjust the shrinkage threshold criteria, number of cores to use, `$\lambda$` grid, `$\alpha$`, `n_folds` as needed.
@@ -94,4 +95,5 @@ folder and file naming based on parameters used.
   
 ## Notes
 
-Intalling the R packages, if not already installed, may take some time. 
+Installing the R packages, if not already installed, may take some time. 
+It is recommended to run the scripts on a machine with multiple cores (e.g. cluster).

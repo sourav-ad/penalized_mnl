@@ -138,6 +138,7 @@ model <- run_penalized_mnl(
   data = data,
   data_schema = data_schema,
   lambda_grid = exp(seq(log(6e-4), log(3e-2), length.out = 10)), #should be chosen appropriately
+  #lambda_grid = exp(seq(log(1e-8), log(1e-1), length.out = n_lambda))
   n_folds = 5,
   alpha = 0.5, #can be adjusted
   threshold = 0.01, #for determining "shrunk" criteria
