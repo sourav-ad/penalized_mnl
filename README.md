@@ -45,7 +45,7 @@ The scripts internally reshape the data into **long format** before estimation.
 as underscore `_` is used to denote interacting features. A line of code already in the script can help achieve it.
 - The best way to name columns will be `<variablename><choicenumber>`, for example, `spec101` or `beach501`. 
 - When providing choice specific variables in `data_schema`, just the `<variablename>` should be provided. 
-- Users can adjust the shrinkage threshold criteria, number of cores to use, `$\lambda$` grid, `$\alpha$`, `n_folds` as needed.
+- Users can adjust the shrinkage threshold criteria, number of cores to use, $\lambda$ grid, $\alpha$, `n_folds` as needed.
 - Users can also handle scaling decisions on the data as needed.  
 
 
