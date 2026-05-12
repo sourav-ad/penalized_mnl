@@ -17,7 +17,7 @@ install_if_missing <- function(packages) {
 }
 
 install_if_missing(required_packages)
-
+#set working directory to root (folder above ~/data)
 source("functions/penalized_mnl_model_general.R")
 #data <- read.csv("data/plastics-survey-uk-us.csv")
 data <- read.csv("data/GoCoase3_peanlised.csv")

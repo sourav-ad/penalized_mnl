@@ -12,6 +12,7 @@
 
 # This file contains the penalized MNL workflow
 # Also installs/loads missing packages
+#set working directory to root (folder above ~/data)
 source("functions/penalized_mnl_model.R")
 
 ### CAUTION: SOME PACKAGES MAY TAKE A LONG TIME TO INSTALL ###
