@@ -2,15 +2,24 @@ run_penalized_mnl <- function(
     data,
     choice_vars = NULL,
     demographic_vars = NULL,
-    lambda_grid = exp(seq(log(6e-4), log(3e-2), length.out = 10)),
+    #lambda_grid = exp(seq(log(6e-4), log(3e-2), length.out = 10)),
+    lambda_grid = NULL,
+    n_lambda = 20,
+    lambda_min = 1e-8,
+    lambda_max = 1e-1,
     n_alt = 3,
     n_folds = 5,
     alpha = 0.5,
     threshold = 0.01,
+    threshold_grid = NULL,
+    tune_threshold = FALSE,
+    threshold_rule = "best_ll",
+    threshold_ll_tolerance = 0,
     optimizer = "BFGS",
     method = "MAXLIK",
     data_schema = NULL,
-    n_workers = NULL
+    n_workers = NULL,
+    nrep = NULL
 ){
 #browser()
   required_packages <- c(
@@ -36,7 +45,7 @@ run_penalized_mnl <- function(
   source("functions/utility_functions_generalized.R")
   source("functions/mnl_function.R")
   source("functions/pre_process.R")
-  source("functions/MNL_functions_general.R")
+  source("functions/MNL_function_any_data.R") #Handles threshold detection
 
   #preprocessing
 
@@ -66,6 +75,43 @@ run_penalized_mnl <- function(
   if (is.null(choice_vars) || is.null(demographic_vars)) {
     stop("Provide choice_vars and demographic_vars, or provide data_schema.")
   }
+  
+  # If the user does not provide a lambda grid, create a broad log-spaced grid.
+  # n_lambda controls how fine the search is.
+  if (is.null(lambda_grid)) {
+    lambda_grid <- exp(seq(
+      log(lambda_min),
+      log(lambda_max),
+      length.out = n_lambda
+    ))
+  }
+  
+  cat("\nLambda grid used for CV:\n")
+  print(lambda_grid)
+  
+  #nrep detection
+  if (is.null(nrep)) {
+    
+    if (!("id" %in% names(data))) {
+      stop(
+        "Cannot auto-detect nrep because column 'id' is not present. ",
+        "Provide nrep manually or make sure prepare_mnl_data() creates an 'id' column."
+      )
+    }
+    
+    reps_per_id <- table(data$id)
+    
+    if (length(unique(reps_per_id)) != 1) {
+      stop(
+        "Cannot auto-detect nrep because respondents have unequal numbers of choice tasks. ",
+        "Please provide nrep manually or balance the data first."
+      )
+    }
+    
+    nrep <- as.integer(unique(reps_per_id))
+  }
+  
+  cat("\nUsing nrep =", nrep, "\n")
   
   # Convert standardized wide data to long data for interaction construction
   output <- data_wide_to_long(
@@ -126,10 +172,54 @@ run_penalized_mnl <- function(
     n_folds = n_folds,
     alpha = alpha,
     optimizer = optimizer,
-    early_stop = TRUE
+    early_stop = TRUE,
+    nrep = nrep
   )
 
   best_lambda <- results_cv$best_lambda
+  
+  if (best_lambda == min(lambda_grid)) {
+    warning(
+      "Best lambda is at the lower boundary of the lambda grid. ",
+      "Consider decreasing lambda_min."
+    )
+  }
+  
+  if (best_lambda == max(lambda_grid)) {
+    warning(
+      "Best lambda is at the upper boundary of the lambda grid. ",
+      "Consider increasing lambda_max."
+    )
+  }
+  
+  #threshold tuning
+  threshold_results <- NULL
+  
+  if (tune_threshold) {
+    
+    if (is.null(threshold_grid)) {
+      threshold_grid <- c(1e-4, 1e-3, 1e-2, 5e-2, 1e-1)
+    }
+    
+    threshold_cv <- tune_threshold_cv(
+      df_demo = df_demo,
+      selected_features = selected_features,
+      demographic_vars = demographic_vars,
+      lambda = best_lambda,
+      alpha = alpha,
+      threshold_grid = threshold_grid,
+      n_alt = n_alt,
+      n = num_covariates,
+      n_folds = n_folds,
+      optimizer = optimizer,
+      nrep = nrep,
+      rule = threshold_rule,
+      ll_tolerance = threshold_ll_tolerance
+    )
+    
+    threshold <- threshold_cv$best_threshold
+    threshold_results <- threshold_cv$threshold_results
+  }
 
   #final model
 
@@ -213,7 +303,9 @@ run_penalized_mnl <- function(
     model = final_model,
     coefficients = coefficients_table,
     best_lambda = best_lambda,
-    cv_results = results_cv$lambda_results
+    best_threshold = threshold,
+    cv_results = results_cv$lambda_results,
+    threshold_results = threshold_results
   )
 
 }

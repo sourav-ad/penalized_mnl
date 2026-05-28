@@ -19,6 +19,7 @@ install_if_missing <- function(packages) {
 install_if_missing(required_packages)
 #set working directory to root (folder above ~/data)
 source("functions/penalized_mnl_model_general.R")
+
 #data <- read.csv("data/plastics-survey-uk-us.csv")
 data <- read.csv("data/GoCoase3_peanlised.csv")
 names(data) <- gsub("_", "", names(data)) #remove underscores in column names
@@ -137,14 +138,18 @@ nrep <- as.integer(unique(table(data[[data_schema$id_col]]))) #extracted from da
 model <- run_penalized_mnl(
   data = data,
   data_schema = data_schema,
-  lambda_grid = exp(seq(log(6e-4), log(3e-2), length.out = 10)), #should be chosen appropriately
-  #lambda_grid = exp(seq(log(1e-8), log(1e-1), length.out = n_lambda))
+  n_lambda = 5, #a larger number ensures a finer grid
+  lambda_min = 1e-8,
+  lambda_max = 9e-1,
   n_folds = 5,
   alpha = 0.5, #can be adjusted
-  threshold = 0.01, #for determining "shrunk" criteria
+  tune_threshold = TRUE,
+  threshold_grid = c(1e-3, 1e-2, 1e-1),
+  threshold_rule = "sparsest_within_tolerance",
+  threshold_ll_tolerance = 1,
   optimizer = "BFGS",
   method = "MAXLIK",
-  n_workers = 25 #change as per system capabilities
+  n_workers = 30 #change as per system capabilities
   #n_workers = parallelly::availableCores() #uses all the cores available in the system
 )
 
